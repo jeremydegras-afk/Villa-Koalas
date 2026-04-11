@@ -1,0 +1,328 @@
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useFirestore } from "./useFirestore";
+
+const U=["Jeremy","Nina"];
+const T={bg:"#0a0e1a",card:"rgba(255,255,255,0.04)",cb:"rgba(255,255,255,0.07)",t:"#f1f5f9",t2:"#94a3b8",t3:"#64748b",red:"#dc2626",rl:"#fca5a5",rg:"rgba(220,38,38,0.15)",blue:"#3b82f6",bl:"#93c5fd",bg2:"rgba(59,130,246,0.15)",ac:"#c084fc",g:"#34d399",r:"#f87171",o:"#fb923c",pk:"#f472b6",cy:"#22d3ee"};
+const cs={background:T.card,backdropFilter:"blur(24px)",borderRadius:18,border:`1px solid ${T.cb}`,padding:"16px 20px",marginBottom:12};
+const is={width:"100%",background:"rgba(255,255,255,0.05)",border:`1px solid ${T.cb}`,borderRadius:12,padding:"11px 14px",color:T.t,fontSize:14,outline:"none",boxSizing:"border-box"};
+const bp={background:`linear-gradient(135deg,${T.red},${T.blue})`,border:"none",borderRadius:12,padding:"11px 20px",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer"};
+const bgg={background:"rgba(255,255,255,0.04)",border:`1px solid ${T.cb}`,borderRadius:12,padding:"11px 16px",color:T.t2,fontSize:13,cursor:"pointer"};
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+const DF=["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+const DFF=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
+
+const STORES=[{key:"carrefour",label:"Carrefour",emoji:"🔴",c:"#dc2626"},{key:"picard",label:"Picard",emoji:"🧊",c:"#3b82f6"},{key:"autre",label:"Autre",emoji:"🏪",c:"#a78bfa"}];
+const CC=["🥖 Boulangerie","🥩 Viande/Poisson","🥬 Fruits & Légumes","🧀 Crémerie","🥫 Épicerie","🧴 Hygiène","🍷 Boissons","🏠 Maison","📦 Autre"];
+const CD=["🛒 Courses","🍽️ Restaurant","🏠 Loyer/Charges","🚗 Transport","🎉 Sorties","💊 Santé","✈️ Voyage","📦 Autre"];
+const CT=["🏠 Maison","📋 Admin","🛠️ Bricolage","🎁 Perso","📦 Autre"];
+const RTAGS=["rapide","végé","comfort","été","classique"];
+
+const PSG=[
+  {date:"2026-04-14",time:"21:00",title:"⚽ Liverpool - PSG",who:"CL 1/4",color:T.blue},
+  {date:"2026-04-19",time:"20:45",title:"⚽ PSG - OL",who:"L1 J32",color:T.red},
+  {date:"2026-04-22",time:"19:00",title:"⚽ PSG - Nantes",who:"L1 J28",color:T.red},
+  {date:"2026-04-25",time:"19:00",title:"⚽ Angers - PSG",who:"L1 J33",color:T.red},
+  {date:"2026-05-02",time:"17:00",title:"⚽ PSG - Lorient",who:"L1 J34",color:T.red},
+  {date:"2026-05-09",time:"21:00",title:"⚽ PSG - Brest",who:"L1 J35",color:T.red},
+  {date:"2026-05-13",time:"20:00",title:"⚽ Lens - PSG",who:"L1 J36",color:T.red},
+  {date:"2026-05-16",time:"21:00",title:"⚽ Paris FC - PSG",who:"L1 J37",color:T.red},
+].map(m=>({...m,id:"psg-"+m.date,isPSG:true}));
+
+const QT=[
+  {text:"La simplicité est la sophistication suprême.",author:"De Vinci"},
+  {text:"Fais de ta vie un rêve, et d'un rêve, une réalité.",author:"Saint-Ex"},
+  {text:"On ne voit bien qu'avec le cœur.",author:"Saint-Ex"},
+  {text:"Sois le changement que tu veux voir dans le monde.",author:"Gandhi"},
+  {text:"La créativité, c'est l'intelligence qui s'amuse.",author:"Einstein"},
+  {text:"Le bonheur n'est pas une destination, c'est une manière de voyager.",author:"Runbeck"},
+  {text:"Ce n'est pas parce que les choses sont difficiles que nous n'osons pas.",author:"Sénèque"},
+];
+const MO=[{e:"☀️",l:"Radieux",c:"#fbbf24"},{e:"😊",l:"Content",c:T.g},{e:"😌",l:"Serein",c:T.cy},{e:"💪",l:"Motivé",c:T.red},{e:"🤔",l:"Pensif",c:T.ac},{e:"😴",l:"Fatigué",c:T.t3},{e:"🥰",l:"Amoureux",c:T.pk}];
+const EVS=[{k:"solo",e:"👤",l:"Solo",m:"Soirée solo 🎧",c:T.t2},{k:"home",e:"🏠",l:"Maison",m:"Cocooning 🍿",c:T.g},{k:"out",e:"🍷",l:"Sortie",m:"Bonne soirée ! 🎉",c:T.blue}];
+const WYR=[["Plage paradisiaque","Montagne enneigée"],["Petit-déj au lit","Dîner aux chandelles"],["Pouvoir voler","Être invisible"],["Road trip spontané","Vacances planifiées"],["Cuisine italienne à vie","Cuisine japonaise à vie"],["Film d'action","Comédie romantique"],["Vivre à la campagne","Vivre en ville"],["Été éternel","Automne éternel"],["Savoir tout cuisiner","Savoir tout réparer"],["Voyage dans le passé","Voyage dans le futur"],["Petit-déj sucré","Petit-déj salé"],["Netflix","Concert live"]];
+
+const SUGG=[
+  {name:"Pâtes carbonara",emoji:"🍝",ing:["400g spaghetti","200g lardons","4 jaunes d'œufs","100g parmesan","Poivre"],steps:["Cuire pâtes","Revenir lardons","Mélanger jaunes + parmesan","Mélanger hors feu"],serv:2,time:20,tags:["rapide","classique"]},
+  {name:"Poulet rôti légumes",emoji:"🍗",ing:["1 poulet","4 pommes de terre","3 carottes","2 oignons","Huile, thym, romarin"],steps:["Four 200°C","Badigeonner poulet","Légumes autour","1h15 au four"],serv:4,time:90,tags:["classique","comfort"]},
+  {name:"Risotto champignons",emoji:"🍄",ing:["300g riz arborio","250g champignons","1 oignon","10cl vin blanc","80cl bouillon","50g parmesan","30g beurre"],steps:["Revenir oignon + champignons","Nacrer riz","Vin blanc","Bouillon louche par louche","Beurre + parmesan"],serv:2,time:35,tags:["comfort","classique"]},
+  {name:"One-pot pasta tomates",emoji:"🍅",ing:["300g penne","400g tomates cerises","2 gousses ail","Basilic","Huile olive","Mozzarella"],steps:["Tout dans la casserole + eau","12 min en remuant","Mozza + basilic"],serv:2,time:15,tags:["rapide","végé"]},
+  {name:"Curry pois chiches",emoji:"🍛",ing:["400g pois chiches","400ml lait coco","200g tomates concassées","1 oignon","Curry, cumin","Épinards","Riz basmati"],steps:["Revenir oignon","Épices + tomates + coco","Pois chiches 15 min","Épinards, servir sur riz"],serv:2,time:25,tags:["végé","rapide"]},
+  {name:"Wok nouilles sautées",emoji:"🍜",ing:["200g nouilles riz","200g poulet ou crevettes","1 poivron","1 carotte","Sauce soja","Huile sésame","Gingembre"],steps:["Cuire nouilles","Sauter viande + légumes","Ajouter nouilles + sauce"],serv:2,time:15,tags:["rapide","été"]},
+  {name:"Salade César",emoji:"🥗",ing:["1 romaine","200g poulet","Croûtons","Parmesan copeaux","Sauce César"],steps:["Griller poulet","Sauce: jaune œuf + moutarde + huile","Assembler"],serv:2,time:15,tags:["rapide","été"]},
+  {name:"Gratin dauphinois",emoji:"🥔",ing:["1kg pommes de terre","40cl crème","20cl lait","Ail","Muscade"],steps:["Trancher finement","Couches + crème lait","1h à 180°C"],serv:4,time:75,tags:["comfort","classique"]},
+  {name:"Quiche lorraine",emoji:"🥧",ing:["1 pâte brisée","200g lardons","3 œufs","20cl crème","15cl lait","100g gruyère"],steps:["Lardons","Mélanger œufs crème lait fromage","Sur pâte, 35 min à 180°C"],serv:4,time:45,tags:["classique","comfort"]},
+  {name:"Saumon papillote",emoji:"🐟",ing:["2 pavés saumon","1 citron","Aneth","1 courgette","Huile olive"],steps:["Saumon sur alu","Courgette citron aneth","Fermer, 20 min à 200°C"],serv:2,time:25,tags:["rapide","été"]},
+  {name:"Tacos maison",emoji:"🌮",ing:["500g viande hachée","Tortillas","Oignon","Tomates","Salade","Fromage","Crème","Épices"],steps:["Viande + oignon + épices","Préparer garnitures","Chacun assemble"],serv:2,time:20,tags:["rapide","comfort"]},
+  {name:"Croque-monsieur",emoji:"🧀",ing:["Pain de mie","Jambon","Gruyère","Béchamel"],steps:["Béchamel","Pain + béchamel + jambon + fromage","10 min à 200°C"],serv:2,time:15,tags:["rapide","classique","comfort"]},
+];
+
+const TABS=[{k:"home",i:"🏠",l:"Accueil"},{k:"courses",i:"🛒",l:"Courses"},{k:"meals",i:"🍽️",l:"Repas"},{k:"todos",i:"✅",l:"To-do"},{k:"depenses",i:"💸",l:"Dépenses"},{k:"planning",i:"📅",l:"Planning"},{k:"voyages",i:"✈️",l:"Voyages"},{k:"more",i:"✨",l:"Plus"}];
+
+function Nav({active:a,onNav}){return(<div style={{position:"fixed",bottom:0,left:0,right:0,background:"rgba(10,14,26,0.96)",backdropFilter:"blur(24px)",borderTop:`1px solid ${T.cb}`,display:"flex",justifyContent:"space-around",padding:"3px 0 env(safe-area-inset-bottom,6px)",zIndex:50}}>{TABS.map(t=>{const act=a===t.k||(["wishlist","jar","notes","photos","wyr","countdowns"].includes(a)&&t.k==="more");return(<button key={t.k} onClick={()=>onNav(t.k)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:0,padding:"4px 2px",position:"relative"}}><span style={{fontSize:16,filter:act?"none":"grayscale(1) opacity(0.4)",transition:"all 0.2s"}}>{t.i}</span><span style={{fontSize:7,fontWeight:act?700:400,background:act?`linear-gradient(90deg,${T.red},${T.blue})`:"none",WebkitBackgroundClip:act?"text":"unset",WebkitTextFillColor:act?"transparent":T.t3}}>{t.l}</span>{act&&<div style={{position:"absolute",top:-1,width:14,height:2,background:`linear-gradient(90deg,${T.red},${T.blue})`,borderRadius:2}}/>}</button>)})}</div>)}
+function PH({title,sub}){return(<div style={{marginBottom:14}}><h2 style={{fontSize:20,fontWeight:700,margin:0,background:`linear-gradient(90deg,${T.rl},${T.bl})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>{title}</h2>{sub&&<p style={{fontSize:11,color:T.t3,margin:"2px 0 0"}}>{sub}</p>}</div>)}
+function Anim({children,k}){return <div key={k} style={{animation:"fadeSlide 0.3s ease"}}>{children}</div>}
+
+function Home({user:u,moods,setMoods,voyages,items,todos,expenses,events,evening,setEvening,onNav,weekPlan,weather,countdowns,photos,wyrAnswers,setWyrAnswers}){
+  const q=QT[Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5)%QT.length];
+  const p2=U.find(x=>x!==u);
+  const nt=voyages.filter(v=>new Date(v.date)>=new Date()).sort((a,b)=>new Date(a.date)-new Date(b.date))[0];
+  const[cd,setCd]=useState(null);
+  useEffect(()=>{if(!nt)return;const up=()=>{const d=new Date(nt.date)-new Date();setCd(d>0?{d:Math.floor(d/864e5),h:Math.floor(d%864e5/36e5),m:Math.floor(d%36e5/6e4),s:Math.floor(d%6e4/1e3)}:null);};up();const iv=setInterval(up,1000);return()=>clearInterval(iv);},[nt?.date]);
+  const fmt=new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
+  const h=new Date().getHours();const gr=h<6?"Bonne nuit":h<12?"Bonjour":h<18?"Bon après-midi":"Bonne soirée";
+  const ts=new Date().toISOString().slice(0,10);const aEv=[...events,...PSG];const tEv=aEv.filter(e=>e.date===ts);
+  const tMeal=weekPlan[ts];const pC=items.filter(x=>!x.done).length;const pT=todos.filter(x=>!x.done).length;
+  const tE=expenses.reduce((s,e)=>s+e.amount,0);const d2=expenses.reduce((s,e)=>s+(e.paidBy===U[0]?e.amount:-e.amount),0)/2;
+  const ow=Math.abs(d2);const db=d2>0?U[1]:U[0];
+  const wkD=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-((d.getDay()+6)%7)+i);return d.toISOString().slice(0,10);});
+  const wkEv=aEv.filter(e=>wkD.includes(e.date)).length;const wkPSG=PSG.filter(m=>wkD.includes(m.date)).length;
+  const wkM=wkD.filter(d=>weekPlan[d]).length;const urgT=todos.filter(x=>!x.done&&x.prio==="urgent").length;
+  const oneYA=photos.find(p=>{const pd=new Date(p.date);const n=new Date();return pd.getMonth()===n.getMonth()&&pd.getDate()===n.getDate()&&pd.getFullYear()<n.getFullYear();});
+  const mP=Math.round(wkM/7*100);
+  const nCd=countdowns.filter(c=>new Date(c.date)>=new Date()).sort((a,b)=>new Date(a.date)-new Date(b.date))[0];
+  const Chip=({icon,label,value,color,tab})=>(<button onClick={()=>onNav(tab)} style={{...cs,flex:1,minWidth:"45%",display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"11px 12px",marginBottom:0,border:`1px solid ${color}22`,background:`${color}08`}}><span style={{fontSize:17}}>{icon}</span><div><p style={{fontSize:16,fontWeight:700,color,margin:0}}>{value}</p><p style={{fontSize:8,color:T.t3,margin:0,lineHeight:1.2}}>{label}</p></div></button>);
+
+  return(<Anim k="home"><div>
+    <div style={{textAlign:"center",marginBottom:16}}><p style={{fontSize:10,letterSpacing:3,textTransform:"uppercase",color:T.t3,margin:"0 0 3px"}}>{fmt.charAt(0).toUpperCase()+fmt.slice(1)}</p><h1 style={{fontSize:22,fontWeight:700,margin:0,background:`linear-gradient(90deg,${T.rl},${T.bl})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>{gr}, {u} 🐨</h1></div>
+    <div style={{...cs,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",background:`linear-gradient(135deg,${T.bg2},rgba(52,211,153,0.04))`}}><div><p style={{fontSize:9,color:T.t3,margin:0}}>Paris</p><div style={{display:"flex",alignItems:"baseline",gap:4}}><span style={{fontSize:28,fontWeight:200}}>{weather.temp}°</span><span style={{fontSize:10,color:T.t3}}>max {weather.high}°</span></div><p style={{fontSize:10,color:T.t2,margin:0}}>{weather.cond}{weather.prec>30?" · ☂️ Parapluie":""}</p></div><span style={{fontSize:34}}>{weather.icon}</span></div>
+    <div style={{...cs,padding:"10px 14px",display:"flex",justifyContent:"space-around",textAlign:"center"}}><div><p style={{fontSize:14,fontWeight:700,color:T.bl,margin:0}}>{wkEv}</p><p style={{fontSize:8,color:T.t3,margin:0}}>événements</p></div><div><p style={{fontSize:14,fontWeight:700,color:T.red,margin:0}}>{wkPSG}</p><p style={{fontSize:8,color:T.t3,margin:0}}>PSG</p></div><div><p style={{fontSize:14,fontWeight:700,color:T.o,margin:0}}>{wkM}/7</p><p style={{fontSize:8,color:T.t3,margin:0}}>repas</p></div>{urgT>0&&<div><p style={{fontSize:14,fontWeight:700,color:T.r,margin:0}}>{urgT}</p><p style={{fontSize:8,color:T.t3,margin:0}}>urgent</p></div>}</div>
+    <div style={{...cs,padding:"10px 14px",cursor:"pointer"}} onClick={()=>onNav("meals")}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><p style={{fontSize:10,color:T.o,margin:0}}>🍽️ Repas planifiés</p><p style={{fontSize:10,color:T.t3,margin:0}}>{wkM}/7</p></div><div style={{background:"rgba(255,255,255,0.06)",borderRadius:6,height:6,overflow:"hidden"}}><div style={{height:"100%",borderRadius:6,background:`linear-gradient(90deg,${T.red},${T.o})`,width:`${mP}%`,transition:"width 0.5s"}}></div></div></div>
+    {nt&&cd&&(<button onClick={()=>onNav("voyages")} style={{...cs,background:`linear-gradient(135deg,${T.rg},${T.bg2})`,textAlign:"center",cursor:"pointer",width:"100%",border:`1px solid rgba(220,38,38,0.1)`}}><p style={{fontSize:9,letterSpacing:2,textTransform:"uppercase",color:T.rl,margin:"0 0 3px"}}>Prochain trip</p><p style={{fontSize:16,fontWeight:700,color:"#fff",margin:"0 0 8px"}}>{nt.emoji||"✈️"} {nt.destination}</p><div style={{display:"flex",justifyContent:"center",gap:5}}>{[{v:cd.d,l:"j"},{v:cd.h,l:"h"},{v:cd.m,l:"m"},{v:cd.s,l:"s"}].map((x,i)=>(<div key={i} style={{background:"rgba(255,255,255,0.06)",borderRadius:8,padding:"4px 7px",minWidth:34,textAlign:"center"}}><span style={{fontSize:15,fontWeight:700,fontVariantNumeric:"tabular-nums",background:`linear-gradient(180deg,${T.rl},${T.bl})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>{String(x.v).padStart(2,"0")}</span><span style={{fontSize:7,color:T.t3,display:"block"}}>{x.l}</span></div>))}</div></button>)}
+    {nCd&&(<button onClick={()=>onNav("countdowns")} style={{...cs,display:"flex",alignItems:"center",gap:10,cursor:"pointer",width:"100%",background:`${T.pk}08`,border:`1px solid ${T.pk}22`}}><span style={{fontSize:22}}>{nCd.emoji}</span><div style={{flex:1,textAlign:"left"}}><p style={{fontSize:12,fontWeight:600,color:T.t,margin:0}}>{nCd.name}</p><p style={{fontSize:10,color:T.pk,margin:0}}>{Math.max(0,Math.ceil((new Date(nCd.date)-new Date())/864e5))}j</p></div></button>)}
+    {tMeal&&(<button onClick={()=>onNav("meals")} style={{...cs,display:"flex",alignItems:"center",gap:10,cursor:"pointer",width:"100%",border:`1px solid ${T.o}22`,background:`${T.o}06`}}><span style={{fontSize:22}}>🍽️</span><div style={{flex:1,textAlign:"left"}}><p style={{fontSize:9,color:T.o,margin:0,textTransform:"uppercase",letterSpacing:1}}>Ce soir</p><p style={{fontSize:13,fontWeight:600,color:T.t,margin:0}}>{tMeal.emoji} {tMeal.name}</p></div></button>)}
+    {oneYA&&(<div style={{...cs,textAlign:"center",background:`linear-gradient(135deg,${T.rg},${T.bg2})`}}><p style={{fontSize:9,color:T.pk,margin:"0 0 4px",letterSpacing:1,textTransform:"uppercase"}}>📸 Il y a un an</p><span style={{fontSize:28}}>{oneYA.emoji}</span><p style={{fontSize:13,fontWeight:600,color:T.t,margin:"4px 0 0"}}>{oneYA.caption}</p></div>)}
+    <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:10}}><Chip icon="🛒" label="à acheter" value={pC} color={T.o} tab="courses"/><Chip icon="✅" label="tâches" value={pT} color={T.ac} tab="todos"/><Chip icon="💸" label={ow<0.5?"équilibre":`${db} doit ${ow.toFixed(0)}€`} value={`${tE.toFixed(0)}€`} color={T.g} tab="depenses"/><Chip icon="📅" label={tEv.length?tEv[0].title:"rien"} value={tEv.length} color={T.cy} tab="planning"/></div>
+    <div style={{...cs,background:`linear-gradient(135deg,${T.rg},${T.bg2})`,textAlign:"center"}}><p style={{fontSize:13,fontStyle:"italic",lineHeight:1.5,color:T.t,margin:"0 0 4px"}}>« {q.text} »</p><p style={{fontSize:10,color:T.t3,margin:0}}>— {q.author}</p></div>
+    <div style={cs}><p style={{fontSize:11,color:T.t2,margin:"0 0 6px",textAlign:"center"}}>Comment tu te sens ?</p><div style={{display:"flex",justifyContent:"center",gap:4,flexWrap:"wrap"}}>{MO.map((m,i)=>(<button key={i} onClick={()=>setMoods(p=>({...p,[u]:i}))} style={{background:moods[u]===i?`${m.c}22`:"rgba(255,255,255,0.03)",border:moods[u]===i?`2px solid ${m.c}`:`2px solid ${T.cb}`,borderRadius:10,padding:"5px 7px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:1,transition:"all 0.25s",transform:moods[u]===i?"scale(1.15)":"scale(1)"}}><span style={{fontSize:16}}>{m.e}</span><span style={{fontSize:7,color:moods[u]===i?m.c:T.t3}}>{m.l}</span></button>))}</div>{moods[p2]!==undefined&&<p style={{textAlign:"center",fontSize:10,color:T.t3,marginTop:6,marginBottom:0}}>{p2} : {MO[moods[p2]]?.e} {MO[moods[p2]]?.l}</p>}</div>
+    {(()=>{const dayIdx=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5)%WYR.length;const wq=WYR[dayIdx];const myA=wyrAnswers[`${dayIdx}-${u}`];const thA=wyrAnswers[`${dayIdx}-${p2}`];return(<div style={{...cs,background:`linear-gradient(135deg,${T.rg},${T.bg2})`,border:`1px solid ${T.ac}15`}}><p style={{fontSize:9,color:T.ac,margin:"0 0 8px",textAlign:"center",letterSpacing:1,textTransform:"uppercase"}}>🤔 Tu préfères ?</p><div style={{display:"flex",gap:6}}>{wq.map((opt,i)=>(<button key={i} onClick={()=>setWyrAnswers(p=>({...p,[`${dayIdx}-${u}`]:i}))} style={{flex:1,padding:"12px 8px",borderRadius:12,cursor:"pointer",background:myA===i?`${i===0?T.red:T.blue}22`:"rgba(255,255,255,0.03)",border:myA===i?`3px solid ${i===0?T.red:T.blue}`:`2px solid ${T.cb}`,transition:"all 0.3s",transform:myA===i?"scale(1.03)":"scale(1)"}}><p style={{fontSize:13,fontWeight:700,color:myA===i?(i===0?T.rl:T.bl):T.t,margin:0,lineHeight:1.3}}>{opt}</p></button>))}</div>{myA!==undefined&&thA!==undefined&&(<p style={{textAlign:"center",fontSize:11,color:myA===thA?T.g:T.o,margin:"8px 0 0",fontWeight:600}}>{myA===thA?"🎉 Même choix !":"😄 Pas d'accord !"}<br/><span style={{fontWeight:400,fontSize:10,color:T.t3}}>{p2} : {wq[thA]}</span></p>)}{myA!==undefined&&thA===undefined&&<p style={{textAlign:"center",fontSize:10,color:T.t3,margin:"6px 0 0"}}>{p2} n'a pas encore répondu…</p>}</div>);})()}
+    <div style={cs}><p style={{fontSize:11,color:T.t2,margin:"0 0 6px",textAlign:"center"}}>🌙 Ce soir</p><div style={{display:"flex",gap:4}}>{EVS.map(o=>(<button key={o.k} onClick={()=>setEvening(o.k)} style={{flex:1,background:evening===o.k?`${o.c}18`:"rgba(255,255,255,0.03)",border:evening===o.k?`2px solid ${o.c}`:`2px solid ${T.cb}`,borderRadius:10,padding:"7px 3px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,transition:"all 0.2s"}}><span style={{fontSize:15}}>{o.e}</span><span style={{fontSize:8,color:evening===o.k?o.c:T.t3}}>{o.l}</span></button>))}</div></div>
+  </div></Anim>);
+}
+
+function Courses({items,setItems}){
+  const[inp,setInp]=useState("");const[qty,setQty]=useState("");const[cat,setCat]=useState(CC[0]);const[as,setAs]=useState(STORES[0].key);
+  const add=()=>{if(!inp.trim())return;setItems(p=>[...p,{id:uid(),name:inp.trim(),qty:qty.trim()||"",cat,store:as,done:false}]);setInp("");setQty("");};
+  const tog=id=>setItems(p=>p.map(x=>x.id===id?{...x,done:!x.done}:x));const rm=id=>setItems(p=>p.filter(x=>x.id!==id));
+  const si=items.filter(x=>x.store===as);const pen=si.filter(x=>!x.done);const don=si.filter(x=>x.done);
+  const grp=useMemo(()=>{const g={};pen.forEach(x=>{if(!g[x.cat])g[x.cat]=[];g[x.cat].push(x);});return g;},[pen]);
+  const sc=useMemo(()=>{const c={};STORES.forEach(s=>{c[s.key]=items.filter(x=>x.store===s.key&&!x.done).length;});return c;},[items]);
+  return(<Anim k="courses"><div><PH title="🛒 Courses" sub={`${items.filter(x=>!x.done).length} articles`}/>
+    <div style={{display:"flex",gap:4,marginBottom:10,overflowX:"auto"}}>{STORES.map(s=>(<button key={s.key} onClick={()=>setAs(s.key)} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:10,cursor:"pointer",whiteSpace:"nowrap",background:as===s.key?`${s.c}18`:"rgba(255,255,255,0.03)",border:as===s.key?`2px solid ${s.c}`:`2px solid ${T.cb}`,flexShrink:0}}><span style={{fontSize:13}}>{s.emoji}</span><span style={{fontSize:11,color:as===s.key?s.c:T.t3,fontWeight:as===s.key?700:400}}>{s.label}</span>{sc[s.key]>0&&<span style={{background:`${s.c}33`,color:s.c,fontSize:9,fontWeight:700,borderRadius:7,padding:"1px 5px"}}>{sc[s.key]}</span>}</button>))}</div>
+    <div style={{...cs,display:"flex",gap:5,flexWrap:"wrap"}}><input value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="Article…" style={{...is,flex:1,minWidth:80,marginBottom:0}}/><input value={qty} onChange={e=>setQty(e.target.value)} placeholder="Qté" style={{...is,width:55,marginBottom:0,textAlign:"center"}}/><select value={cat} onChange={e=>setCat(e.target.value)} style={{...is,width:"auto",flex:"none"}}>{CC.map(c=><option key={c} value={c}>{c}</option>)}</select><button onClick={add} style={{...bp,padding:"11px 12px"}}>+</button></div>
+    {Object.entries(grp).map(([c,list])=>(<div key={c}><p style={{fontSize:10,color:STORES.find(s=>s.key===as)?.c,margin:"10px 0 4px",letterSpacing:1}}>{c}</p>{list.map(x=>(<div key={x.id} style={{...cs,display:"flex",alignItems:"center",gap:7,padding:"8px 12px",marginBottom:3}}><button onClick={()=>tog(x.id)} style={{width:18,height:18,borderRadius:5,border:`2px solid ${T.cb}`,background:"none",cursor:"pointer",flexShrink:0}}/><span style={{flex:1,fontSize:12,color:T.t}}>{x.name}</span>{x.qty&&<span style={{fontSize:10,color:T.o,background:`${T.o}15`,padding:"1px 6px",borderRadius:6}}>{x.qty}</span>}<button onClick={()=>rm(x.id)} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",fontSize:11}}>✕</button></div>))}</div>))}
+    {!pen.length&&<p style={{textAlign:"center",color:T.t3,fontSize:12,marginTop:24}}>Rien ici ✅</p>}
+    {don.length>0&&(<div style={{marginTop:12}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><p style={{fontSize:10,color:T.t3,margin:0}}>Cochés ({don.length})</p><button onClick={()=>setItems(p=>p.filter(x=>!(x.store===as&&x.done)))} style={{background:"none",border:"none",color:T.r,fontSize:10,cursor:"pointer"}}>Vider</button></div>{don.map(x=>(<div key={x.id} style={{...cs,display:"flex",alignItems:"center",gap:6,padding:"5px 10px",marginBottom:2,opacity:0.3}}><span style={{color:T.g,fontSize:10}}>✓</span><span style={{flex:1,fontSize:11,color:T.t3,textDecoration:"line-through"}}>{x.name}</span></div>))}</div>)}
+  </div></Anim>);
+}
+
+function Meals({recipes,setRecipes,weekPlan,setWeekPlan,items,setItems}){
+  const[view,setView]=useState("week");const[form,setForm]=useState({name:"",emoji:"🍝",ingredients:"",steps:"",servings:"2",time:"",tags:[]});
+  const[assignR,setAssignR]=useState(null);const[assignD,setAssignD]=useState("");const[searchQ,setSearchQ]=useState("");const[tagF,setTagF]=useState("");
+  const wk=useMemo(()=>Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-((d.getDay()+6)%7)+i);return d;}),[]);
+  const ts=new Date().toISOString().slice(0,10);
+  const addR=()=>{if(!form.name.trim())return;const ings=form.ingredients.split("\n").map(s=>s.trim()).filter(Boolean);const steps=form.steps.split("\n").map(s=>s.trim()).filter(Boolean);setRecipes(p=>[...p,{id:uid(),name:form.name.trim(),emoji:form.emoji,ingredients:ings,steps,servings:parseInt(form.servings)||2,time:parseInt(form.time)||0,tags:form.tags}]);setForm({name:"",emoji:"🍝",ingredients:"",steps:"",servings:"2",time:"",tags:[]});setView("recipes");};
+  const impS=s=>{if(!recipes.some(r=>r.name===s.name))setRecipes(p=>[...p,{id:uid(),name:s.name,emoji:s.emoji,ingredients:[...s.ing],steps:[...s.steps],servings:s.serv,time:s.time,tags:[...s.tags]}]);setView("recipes");};
+  const assign=(rid,d)=>{const r=recipes.find(x=>x.id===rid);if(r)setWeekPlan(p=>({...p,[d]:r}));setAssignR(null);};
+  const rmD=d=>setWeekPlan(p=>{const n={...p};delete n[d];return n;});
+  const genC=r=>{if(!r)return;r.ingredients.forEach(ing=>{if(!items.some(x=>x.name.toLowerCase()===ing.toLowerCase()&&!x.done))setItems(p=>[...p,{id:uid(),name:ing,qty:"",cat:"🥫 Épicerie",store:"carrefour",done:false}]);});};
+  const randF=()=>{if(!recipes.length)return;wk.forEach(d=>{const ds=d.toISOString().slice(0,10);if(!weekPlan[ds])setWeekPlan(p=>({...p,[ds]:recipes[Math.floor(Math.random()*recipes.length)]}));});};
+  const mUrl=`https://www.marmiton.org/recettes/recherche.aspx?aqt=${encodeURIComponent(searchQ||"recette facile")}`;
+  const filt=tagF?SUGG.filter(s=>s.tags.includes(tagF)):SUGG;
+
+  if(view==="suggestions")return(<Anim k="sug"><div><PH title="💡 Idées"/><button onClick={()=>setView("week")} style={{...bgg,marginBottom:10}}>← Retour</button>
+    <div style={{...cs,background:`${T.o}08`,border:`1px solid ${T.o}22`}}><p style={{fontSize:10,color:T.o,margin:"0 0 5px",letterSpacing:1}}>🔍 MARMITON</p><div style={{display:"flex",gap:5}}><input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Gratin, poulet…" style={{...is,flex:1}}/><a href={mUrl} target="_blank" rel="noopener noreferrer" style={{...bp,textDecoration:"none",padding:"11px 12px",fontSize:12}}>→</a></div></div>
+    <div style={{display:"flex",gap:4,marginBottom:8,overflowX:"auto"}}><button onClick={()=>setTagF("")} style={{...bgg,padding:"5px 10px",fontSize:10,background:!tagF?`${T.ac}22`:undefined}}>Tous</button>{RTAGS.map(t=>(<button key={t} onClick={()=>setTagF(t)} style={{...bgg,padding:"5px 10px",fontSize:10,whiteSpace:"nowrap",background:tagF===t?`${T.ac}22`:undefined}}>{t}</button>))}</div>
+    {filt.map((s,i)=>{const has=recipes.some(r=>r.name===s.name);return(<div key={i} style={{...cs,marginBottom:5}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}><div style={{flex:1}}><p style={{fontSize:13,fontWeight:700,color:T.t,margin:0}}>{s.emoji} {s.name}</p><p style={{fontSize:9,color:T.t3,margin:"2px 0"}}>{s.serv}p · {s.time}min · {s.tags.join(", ")}</p></div><button onClick={()=>impS(s)} disabled={has} style={{...bp,padding:"6px 10px",fontSize:10,opacity:has?0.4:1}}>{has?"✓":"+"}</button></div></div>);})}
+  </div></Anim>);
+
+  if(view==="week")return(<Anim k="mw"><div><PH title="🍽️ Repas"/>
+    <div style={{display:"flex",gap:4,marginBottom:10}}><button style={{...bp,flex:1,fontSize:11}}>📅 Semaine</button><button onClick={()=>setView("recipes")} style={{...bgg,flex:1,fontSize:11}}>📖 ({recipes.length})</button><button onClick={()=>setView("suggestions")} style={{...bgg,flex:1,fontSize:11,background:`${T.o}10`,color:T.o}}>💡</button></div>
+    <button onClick={randF} style={{...bgg,width:"100%",marginBottom:10,textAlign:"center"}}>🎲 Remplir aléatoirement</button>
+    {wk.map(d=>{const ds=d.toISOString().slice(0,10);const ml=weekPlan[ds];const it=ds===ts;return(<div key={ds} style={{...cs,padding:"10px 12px",marginBottom:5,background:it?`${T.blue}0a`:T.card,border:it?`1px solid ${T.blue}33`:`1px solid ${T.cb}`}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:44}}><p style={{fontSize:11,color:it?T.bl:T.t2,margin:0,fontWeight:it?700:500}}>{DF[(d.getDay()+6)%7]}</p><p style={{fontSize:8,color:T.t3,margin:0}}>{d.getDate()}/{d.getMonth()+1}</p></div>{ml?<p style={{fontSize:13,fontWeight:600,color:T.t,margin:0}}>{ml.emoji} {ml.name}</p>:<p style={{fontSize:12,color:T.t3,margin:0}}>—</p>}</div><div style={{display:"flex",gap:3}}>{ml&&<button onClick={()=>rmD(ds)} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",fontSize:10}}>✕</button>}{ml&&<button onClick={()=>genC(ml)} style={{background:`${T.g}15`,border:"none",borderRadius:6,padding:"3px 6px",color:T.g,fontSize:9,cursor:"pointer"}}>🛒</button>}{!ml&&<button onClick={()=>{setAssignD(ds);setAssignR("pick");}} style={{background:`${T.o}18`,border:`1px solid ${T.o}44`,borderRadius:7,padding:"3px 8px",color:T.o,fontSize:10,cursor:"pointer"}}>+</button>}</div></div></div>);})}
+    {assignR==="pick"&&(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",backdropFilter:"blur(8px)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setAssignR(null)}><div style={{background:"#1e293b",borderRadius:18,padding:18,width:"90%",maxWidth:360,border:`1px solid ${T.cb}`,maxHeight:"70vh",overflow:"auto"}} onClick={e=>e.stopPropagation()}><h3 style={{margin:"0 0 10px",fontSize:14,color:T.t}}>Choisir</h3>{!recipes.length&&<p style={{fontSize:12,color:T.t3}}>Va dans 💡 d'abord !</p>}{recipes.map(r=>(<button key={r.id} onClick={()=>assign(r.id,assignD)} style={{...cs,display:"flex",alignItems:"center",gap:8,cursor:"pointer",width:"100%",padding:"10px 12px"}}><span style={{fontSize:20}}>{r.emoji}</span><div style={{flex:1,textAlign:"left"}}><p style={{fontSize:12,fontWeight:600,color:T.t,margin:0}}>{r.name}</p><p style={{fontSize:9,color:T.t3,margin:0}}>{r.time?r.time+"min · ":""}{r.ingredients.length} ing.</p></div></button>))}<button onClick={()=>setAssignR(null)} style={{...bgg,width:"100%",marginTop:4}}>Annuler</button></div></div>)}
+  </div></Anim>);
+
+  if(view==="recipes")return(<Anim k="mr"><div><PH title="📖 Recettes" sub={`${recipes.length}`}/>
+    <div style={{display:"flex",gap:4,marginBottom:10}}><button onClick={()=>setView("week")} style={{...bgg,flex:1,fontSize:11}}>📅</button><button style={{...bp,flex:1,fontSize:11}}>📖</button><button onClick={()=>setView("suggestions")} style={{...bgg,flex:1,fontSize:11,background:`${T.o}10`,color:T.o}}>💡</button></div>
+    <button onClick={()=>setView("addRecipe")} style={{...bp,width:"100%",marginBottom:10}}>+ Recette</button>
+    {recipes.map(r=>(<div key={r.id} style={{...cs,marginBottom:6}}><div style={{display:"flex",justifyContent:"space-between"}}><div style={{flex:1}}><p style={{fontSize:14,fontWeight:700,color:T.t,margin:0}}>{r.emoji} {r.name}</p><p style={{fontSize:9,color:T.t3,margin:"2px 0"}}>{r.servings}p{r.time?` · ${r.time}min`:""}{r.tags?.length?` · ${r.tags.join(", ")}`:""}</p></div><button onClick={()=>setRecipes(p=>p.filter(x=>x.id!==r.id))} style={{background:"none",border:"none",color:T.t3,cursor:"pointer"}}>✕</button></div><div style={{display:"flex",flexWrap:"wrap",gap:2,marginTop:4}}>{r.ingredients.map((g,i)=>(<span key={i} style={{background:`${T.o}12`,color:T.o,fontSize:9,padding:"1px 5px",borderRadius:5}}>{g}</span>))}</div>{r.steps.length>0&&<div style={{marginTop:4}}>{r.steps.map((s,i)=>(<p key={i} style={{fontSize:10,color:T.t2,margin:"1px 0"}}><span style={{color:T.blue,fontWeight:700}}>{i+1}.</span> {s}</p>))}</div>}<button onClick={()=>genC(r)} style={{background:`${T.g}15`,border:`1px solid ${T.g}33`,borderRadius:6,padding:"3px 8px",color:T.g,fontSize:9,cursor:"pointer",marginTop:4}}>🛒 Courses</button></div>))}
+  </div></Anim>);
+
+  return(<Anim k="ar"><div><PH title="👨‍🍳 Nouvelle recette"/><div style={{...cs,display:"flex",flexDirection:"column",gap:6}}>
+    <div style={{display:"flex",gap:5}}><input value={form.emoji} onChange={e=>setForm(p=>({...p,emoji:e.target.value}))} style={{...is,width:42,textAlign:"center",fontSize:18}}/><input value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Nom" style={{...is,flex:1}}/></div>
+    <div style={{display:"flex",gap:5}}><input value={form.servings} onChange={e=>setForm(p=>({...p,servings:e.target.value}))} placeholder="Pers." type="number" style={{...is,flex:1}}/><input value={form.time} onChange={e=>setForm(p=>({...p,time:e.target.value}))} placeholder="Min" type="number" style={{...is,flex:1}}/></div>
+    <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>{RTAGS.map(t=>(<button key={t} onClick={()=>setForm(p=>({...p,tags:p.tags.includes(t)?p.tags.filter(x=>x!==t):[...p.tags,t]}))} style={{padding:"4px 8px",borderRadius:7,fontSize:10,cursor:"pointer",border:form.tags.includes(t)?`2px solid ${T.ac}`:`2px solid ${T.cb}`,background:form.tags.includes(t)?`${T.ac}18`:"transparent",color:form.tags.includes(t)?T.ac:T.t3}}>{t}</button>))}</div>
+    <textarea value={form.ingredients} onChange={e=>setForm(p=>({...p,ingredients:e.target.value}))} placeholder="Ingrédients (un/ligne)" rows={4} style={{...is,resize:"vertical"}}/>
+    <textarea value={form.steps} onChange={e=>setForm(p=>({...p,steps:e.target.value}))} placeholder="Étapes (une/ligne)" rows={3} style={{...is,resize:"vertical"}}/>
+    <div style={{display:"flex",gap:5}}><button onClick={()=>setView("recipes")} style={{...bgg,flex:1}}>Annuler</button><button onClick={addR} style={{...bp,flex:1}}>Enregistrer</button></div>
+  </div></div></Anim>);
+}
+
+function Todos({todos,setTodos}){
+  const[inp,setInp]=useState("");const[cat,setCat]=useState(CT[0]);const[who,setWho]=useState("Tous les deux");const[prio,setPrio]=useState("normal");
+  const add=()=>{if(!inp.trim())return;setTodos(p=>[...p,{id:uid(),name:inp.trim(),cat,who,prio,done:false}]);setInp("");};
+  const tog=id=>setTodos(p=>p.map(x=>x.id===id?{...x,done:!x.done}:x));const rm=id=>setTodos(p=>p.filter(x=>x.id!==id));
+  const pen=todos.filter(x=>!x.done);const don=todos.filter(x=>x.done);const pC={urgent:T.red,normal:T.blue,low:T.t3};
+  const sorted=useMemo(()=>[...pen].sort((a,b)=>({urgent:0,normal:1,low:2}[a.prio]||1)-({urgent:0,normal:1,low:2}[b.prio]||1)),[pen]);
+  return(<Anim k="todos"><div><PH title="✅ To-do" sub={`${pen.length} tâche${pen.length>1?"s":""}`}/>
+    <div style={{...cs,display:"flex",flexDirection:"column",gap:5}}><input value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="Tâche…" style={is}/><div style={{display:"flex",gap:4}}><select value={cat} onChange={e=>setCat(e.target.value)} style={{...is,flex:1}}>{CT.map(c=><option key={c} value={c}>{c}</option>)}</select><select value={who} onChange={e=>setWho(e.target.value)} style={{...is,flex:1}}><option>Tous les deux</option>{U.map(u=><option key={u}>{u}</option>)}</select></div><div style={{display:"flex",gap:4}}>{["urgent","normal","low"].map(p=>(<button key={p} onClick={()=>setPrio(p)} style={{flex:1,padding:5,borderRadius:8,fontSize:10,cursor:"pointer",border:prio===p?`2px solid ${pC[p]}`:`2px solid ${T.cb}`,background:prio===p?`${pC[p]}18`:"transparent",color:prio===p?pC[p]:T.t3}}>{p==="urgent"?"🔴":""}{ p==="normal"?"🔵":""}{p==="low"?"⚪":""} {p==="urgent"?"Urgent":p==="normal"?"Normal":"Pas pressé"}</button>))}</div><button onClick={add} style={{...bp,width:"100%"}}>Ajouter</button></div>
+    {sorted.map(x=>(<div key={x.id} style={{...cs,display:"flex",alignItems:"center",gap:7,padding:"9px 12px",marginBottom:3,borderLeft:`4px solid ${pC[x.prio]}`}}><button onClick={()=>tog(x.id)} style={{width:17,height:17,borderRadius:5,border:`2px solid ${T.cb}`,background:"none",cursor:"pointer",flexShrink:0}}/><div style={{flex:1}}><p style={{fontSize:12,color:T.t,margin:0}}>{x.name}</p><p style={{fontSize:8,color:T.t3,margin:0}}>{x.cat} · {x.who}</p></div><button onClick={()=>rm(x.id)} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",fontSize:11}}>✕</button></div>))}
+    {!pen.length&&<p style={{textAlign:"center",color:T.t3,fontSize:12,marginTop:20}}>Rien 🎉</p>}
+    {don.length>0&&<div style={{marginTop:12}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><p style={{fontSize:9,color:T.t3,margin:0}}>Fait ({don.length})</p><button onClick={()=>setTodos(p=>p.filter(x=>!x.done))} style={{background:"none",border:"none",color:T.r,fontSize:9,cursor:"pointer"}}>Vider</button></div>{don.map(x=>(<div key={x.id} style={{...cs,padding:"5px 10px",marginBottom:2,opacity:0.3}}><span style={{fontSize:10,color:T.t3,textDecoration:"line-through"}}>✓ {x.name}</span></div>))}</div>}
+  </div></Anim>);
+}
+
+function Depenses({expenses,setExpenses}){
+  const[show,setShow]=useState(false);const[form,setForm]=useState({label:"",amount:"",cat:CD[0],paidBy:U[0]});const[monthF,setMonthF]=useState("");
+  const add=()=>{const a=parseFloat(form.amount);if(!form.label.trim()||isNaN(a)||a<=0)return;setExpenses(p=>[{id:uid(),...form,amount:a,date:new Date().toISOString()},...p]);setForm({label:"",amount:"",cat:CD[0],paidBy:U[0]});setShow(false);};
+  const filtered=monthF?expenses.filter(e=>{const d=new Date(e.date);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`===monthF;}):expenses;
+  const totals=useMemo(()=>{const t={[U[0]]:0,[U[1]]:0};filtered.forEach(e=>{t[e.paidBy]+=e.amount;});return t;},[filtered]);
+  const total=totals[U[0]]+totals[U[1]];const diff=(totals[U[0]]-totals[U[1]])/2;const db=diff>0?U[1]:U[0];const cr=diff>0?U[0]:U[1];const ow=Math.abs(diff);
+  const months=useMemo(()=>{const s=new Set();expenses.forEach(e=>{const d=new Date(e.date);s.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);});return[...s].sort().reverse();},[expenses]);
+  return(<Anim k="dep"><div><PH title="💸 Dépenses" sub={`${total.toFixed(0)}€`}/>
+    <div style={{...cs,background:`linear-gradient(135deg,${T.bg2},rgba(52,211,153,0.06))`}}><div style={{display:"flex",justifyContent:"space-around",marginBottom:8}}>{U.map(u=>(<div key={u} style={{textAlign:"center"}}><p style={{fontSize:10,color:T.t3,margin:0}}>{u}</p><p style={{fontSize:18,fontWeight:700,color:T.t,margin:0}}>{totals[u].toFixed(0)}€</p></div>))}</div><div style={{background:"rgba(255,255,255,0.06)",borderRadius:10,padding:"7px 10px",textAlign:"center"}}>{ow<0.5?<p style={{fontSize:12,color:T.g,margin:0}}>✅ Équilibre</p>:<p style={{fontSize:12,color:T.o,margin:0}}>{db} doit <strong>{ow.toFixed(2)}€</strong> à {cr}</p>}</div>{ow>=0.5&&<button onClick={()=>{if(window.confirm("Remettre à zéro ?"))setExpenses([]);}} style={{...bgg,width:"100%",marginTop:8,textAlign:"center",fontSize:11,color:T.g}}>✅ On est quittes</button>}</div>
+    {months.length>1&&<div style={{display:"flex",gap:4,marginBottom:8,overflowX:"auto"}}><button onClick={()=>setMonthF("")} style={{...bgg,padding:"4px 10px",fontSize:10,background:!monthF?`${T.ac}22`:undefined}}>Tout</button>{months.map(m=>(<button key={m} onClick={()=>setMonthF(m)} style={{...bgg,padding:"4px 10px",fontSize:10,background:monthF===m?`${T.ac}22`:undefined}}>{m}</button>))}</div>}
+    {!show&&<button onClick={()=>setShow(true)} style={{...bp,width:"100%",marginBottom:8}}>+ Dépense</button>}
+    {show&&(<div style={{...cs,display:"flex",flexDirection:"column",gap:5}}><input value={form.label} onChange={e=>setForm(p=>({...p,label:e.target.value}))} placeholder="Libellé" style={is}/><div style={{display:"flex",gap:5}}><input type="number" value={form.amount} onChange={e=>setForm(p=>({...p,amount:e.target.value}))} placeholder="€" style={{...is,flex:1}}/><select value={form.cat} onChange={e=>setForm(p=>({...p,cat:e.target.value}))} style={{...is,width:"auto"}}>{CD.map(c=><option key={c} value={c}>{c}</option>)}</select></div><div style={{display:"flex",gap:5}}>{U.map(u=>(<button key={u} onClick={()=>setForm(p=>({...p,paidBy:u}))} style={{flex:1,padding:8,borderRadius:10,fontSize:12,cursor:"pointer",border:form.paidBy===u?`2px solid ${T.blue}`:`2px solid ${T.cb}`,background:form.paidBy===u?`${T.blue}18`:"transparent",color:form.paidBy===u?T.blue:T.t3}}>{u}</button>))}</div><div style={{display:"flex",gap:5}}><button onClick={()=>setShow(false)} style={{...bgg,flex:1}}>Annuler</button><button onClick={add} style={{...bp,flex:1}}>Ajouter</button></div></div>)}
+    {filtered.map(e=>(<div key={e.id} style={{...cs,display:"flex",alignItems:"center",gap:7,padding:"8px 10px",marginBottom:3}}><span style={{fontSize:14}}>{e.cat.split(" ")[0]}</span><div style={{flex:1}}><p style={{fontSize:12,color:T.t,margin:0}}>{e.label}</p><p style={{fontSize:8,color:T.t3,margin:0}}>{e.paidBy} · {new Date(e.date).toLocaleDateString("fr-FR")}</p></div><span style={{fontSize:13,fontWeight:700,color:T.t}}>{e.amount.toFixed(2)}€</span><button onClick={()=>setExpenses(p=>p.filter(x=>x.id!==e.id))} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",fontSize:11}}>✕</button></div>))}
+  </div></Anim>);
+}
+
+function Planning({events,setEvents}){
+  const[wo,setWo]=useState(0);const[sa,setSa]=useState(false);const[form,setForm]=useState({title:"",date:"",time:"12:00",who:"Tous les deux",color:T.blue});
+  const days=useMemo(()=>{const n=new Date();const m=new Date(n);m.setDate(n.getDate()-((n.getDay()+6)%7)+wo*7);return Array.from({length:7},(_,i)=>{const d=new Date(m);d.setDate(m.getDate()+i);return d;});},[wo]);
+  const it=d=>d.toDateString()===new Date().toDateString();const ml=days[0].toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
+  const aE=useMemo(()=>[...events,...PSG],[events]);
+  const add=()=>{if(!form.title.trim()||!form.date)return;setEvents(p=>[...p,{id:uid(),...form}]);setForm({title:"",date:"",time:"12:00",who:"Tous les deux",color:T.blue});setSa(false);};
+  const CL=[T.blue,T.red,T.g,T.o,T.pk,T.cy];
+  return(<Anim k="plan"><div><PH title="📅 Planning" sub={ml.charAt(0).toUpperCase()+ml.slice(1)}/>
+    <div style={{display:"flex",justifyContent:"space-between",marginBottom:7}}><button onClick={()=>setWo(p=>p-1)} style={bgg}>←</button><button onClick={()=>setWo(0)} style={{...bgg,fontSize:10}}>Auj.</button><button onClick={()=>setWo(p=>p+1)} style={bgg}>→</button></div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:10}}>{days.map((d,i)=>{const ds=d.toISOString().slice(0,10);const de=aE.filter(e=>e.date===ds);const hp=de.some(e=>e.isPSG);return(<div key={i} onClick={()=>{setForm(p=>({...p,date:ds}));setSa(true);}} style={{background:it(d)?`${T.blue}22`:hp?T.rg:T.card,border:it(d)?`2px solid ${T.blue}`:hp?`1px solid ${T.red}33`:`1px solid ${T.cb}`,borderRadius:9,padding:"3px 1px",textAlign:"center",cursor:"pointer",minHeight:60}}><p style={{fontSize:7,color:T.t3,margin:0}}>{DF[i]}</p><p style={{fontSize:13,fontWeight:it(d)?700:400,color:it(d)?T.bl:T.t,margin:"1px 0 1px"}}>{d.getDate()}</p>{de.slice(0,2).map(e=>(<div key={e.id} style={{background:`${e.color||T.blue}33`,borderRadius:3,padding:"0 1px",marginBottom:1}}><p style={{fontSize:5,color:e.color||T.blue,margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.title.replace("⚽ ","").slice(0,8)}</p></div>))}{de.length>2&&<p style={{fontSize:5,color:T.t3,margin:0}}>+{de.length-2}</p>}</div>);})}</div>
+    {days.map(d=>{const ds=d.toISOString().slice(0,10);return aE.filter(e=>e.date===ds).sort((a,b)=>(a.time||"").localeCompare(b.time||"")).map(e=>(<div key={e.id} style={{...cs,display:"flex",alignItems:"center",gap:7,padding:"8px 10px",marginBottom:3,borderLeft:`4px solid ${e.color||T.blue}`}}><div style={{flex:1}}><p style={{fontSize:12,color:T.t,margin:0,fontWeight:600}}>{e.title}</p><p style={{fontSize:8,color:T.t3,margin:0}}>{DF[(new Date(e.date).getDay()+6)%7]} {new Date(e.date).getDate()} · {e.time} · {e.who}</p></div>{!e.isPSG&&<button onClick={()=>setEvents(p=>p.filter(x=>x.id!==e.id))} style={{background:"none",border:"none",color:T.t3,cursor:"pointer"}}>✕</button>}{e.isPSG&&<span style={{fontSize:8,color:T.rl,background:T.rg,padding:"2px 5px",borderRadius:5,fontWeight:600}}>PSG</span>}</div>));})}
+    {!sa&&<button onClick={()=>setSa(true)} style={{...bp,width:"100%",marginTop:4}}>+ Événement</button>}
+    {sa&&(<div style={{...cs,display:"flex",flexDirection:"column",gap:5,marginTop:4}}><input value={form.title} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="Titre" style={is}/><div style={{display:"flex",gap:5}}><input type="date" value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))} style={{...is,flex:1}}/><input type="time" value={form.time} onChange={e=>setForm(p=>({...p,time:e.target.value}))} style={{...is,width:85}}/></div><select value={form.who} onChange={e=>setForm(p=>({...p,who:e.target.value}))} style={is}><option>Tous les deux</option>{U.map(u=><option key={u}>{u}</option>)}</select><div style={{display:"flex",gap:3}}>{CL.map(c=>(<button key={c} onClick={()=>setForm(p=>({...p,color:c}))} style={{width:20,height:20,borderRadius:5,background:c,border:form.color===c?"3px solid #fff":"3px solid transparent",cursor:"pointer"}}/>))}</div><div style={{display:"flex",gap:5}}><button onClick={()=>setSa(false)} style={{...bgg,flex:1}}>Annuler</button><button onClick={add} style={{...bp,flex:1}}>Ajouter</button></div></div>)}
+  </div></Anim>);
+}
+
+function Voyages({voyages,setVoyages,pl,setPl}){
+  const[sa,setSa]=useState(false);const[form,setForm]=useState({destination:"",emoji:"✈️",date:"",dateFin:"",notes:""});const[op,setOp]=useState(null);const[pi,setPi]=useState("");
+  const add=()=>{if(!form.destination.trim()||!form.date)return;const id=uid();setVoyages(p=>[...p,{id,...form}].sort((a,b)=>new Date(a.date)-new Date(b.date)));setPl(p=>({...p,[id]:[]}));setForm({destination:"",emoji:"✈️",date:"",dateFin:"",notes:""});setSa(false);};
+  const addP=tid=>{if(!pi.trim())return;setPl(p=>({...p,[tid]:[...(p[tid]||[]),{id:uid(),name:pi.trim(),done:false}]}));setPi("");};
+  const togP=(tid,iid)=>setPl(p=>({...p,[tid]:(p[tid]||[]).map(x=>x.id===iid?{...x,done:!x.done}:x)}));
+  const up=voyages.filter(v=>new Date(v.dateFin||v.date)>=new Date());const pa=voyages.filter(v=>new Date(v.dateFin||v.date)<new Date());
+  const Trip=({v,old})=>{const dl=Math.max(0,Math.ceil((new Date(v.date)-new Date())/864e5));const pk=pl[v.id]||[];const pd=pk.filter(x=>x.done).length;return(<div style={{...cs,borderLeft:`4px solid ${old?T.t3:T.red}`,opacity:old?0.6:1}}><div style={{display:"flex",justifyContent:"space-between"}}><div style={{flex:1}}><p style={{fontSize:15,fontWeight:700,color:T.t,margin:0}}>{v.emoji} {v.destination}</p><p style={{fontSize:10,color:T.t3,margin:"2px 0"}}>{new Date(v.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}{v.dateFin&&` → ${new Date(v.dateFin).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}`}</p>{!old&&dl>0&&<p style={{fontSize:10,color:T.red,margin:0,fontWeight:600}}>Dans {dl}j</p>}{v.notes&&<p style={{fontSize:10,color:T.t2,margin:"3px 0 0"}}>{v.notes}</p>}</div><button onClick={()=>setVoyages(p=>p.filter(x=>x.id!==v.id))} style={{background:"none",border:"none",color:T.t3,cursor:"pointer"}}>✕</button></div>{!old&&<div style={{marginTop:6,borderTop:`1px solid ${T.cb}`,paddingTop:6}}><button onClick={()=>setOp(op===v.id?null:v.id)} style={{background:"none",border:"none",color:T.blue,fontSize:10,cursor:"pointer",padding:0}}>🎒 ({pd}/{pk.length}) {op===v.id?"▲":"▼"}</button>{op===v.id&&<div style={{marginTop:5}}><div style={{display:"flex",gap:3,marginBottom:4}}><input value={pi} onChange={e=>setPi(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addP(v.id)} placeholder="…" style={{...is,flex:1,padding:"6px 8px",fontSize:11}}/><button onClick={()=>addP(v.id)} style={{...bp,padding:"6px 10px",fontSize:11}}>+</button></div>{pk.map(x=>(<div key={x.id} style={{display:"flex",alignItems:"center",gap:4,padding:"2px 0"}}><button onClick={()=>togP(v.id,x.id)} style={{width:14,height:14,borderRadius:3,border:x.done?`2px solid ${T.g}`:`2px solid ${T.cb}`,background:x.done?`${T.g}33`:"none",cursor:"pointer",fontSize:8,display:"flex",alignItems:"center",justifyContent:"center",color:T.g}}>{x.done?"✓":""}</button><span style={{fontSize:10,color:x.done?T.t3:T.t,textDecoration:x.done?"line-through":"none"}}>{x.name}</span></div>))}</div>}</div>}</div>);};
+  return(<Anim k="voy"><div><PH title="✈️ Voyages" sub={`${up.length} trip${up.length>1?"s":""}`}/>
+    {!sa&&<button onClick={()=>setSa(true)} style={{...bp,width:"100%",marginBottom:8}}>+ Trip</button>}
+    {sa&&(<div style={{...cs,display:"flex",flexDirection:"column",gap:5,marginBottom:8}}><div style={{display:"flex",gap:5}}><input value={form.emoji} onChange={e=>setForm(p=>({...p,emoji:e.target.value}))} style={{...is,width:40,textAlign:"center",fontSize:16}}/><input value={form.destination} onChange={e=>setForm(p=>({...p,destination:e.target.value}))} placeholder="Destination" style={{...is,flex:1}}/></div><div style={{display:"flex",gap:5}}><div style={{flex:1}}><label style={{fontSize:8,color:T.t3}}>Départ</label><input type="date" value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))} style={is}/></div><div style={{flex:1}}><label style={{fontSize:8,color:T.t3}}>Retour</label><input type="date" value={form.dateFin} onChange={e=>setForm(p=>({...p,dateFin:e.target.value}))} style={is}/></div></div><textarea value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} placeholder="Notes…" rows={2} style={{...is,resize:"vertical"}}/><div style={{display:"flex",gap:5}}><button onClick={()=>setSa(false)} style={{...bgg,flex:1}}>Annuler</button><button onClick={add} style={{...bp,flex:1}}>Ajouter</button></div></div>)}
+    {up.map(v=><Trip key={v.id} v={v}/>)}{pa.length>0&&<><p style={{fontSize:9,color:T.t3,margin:"12px 0 4px"}}>PASSÉS</p>{pa.map(v=><Trip key={v.id} v={v} old/>)}</>}
+  </div></Anim>);
+}
+
+function Wishlist({wishes,setWishes}){
+  const[inp,setInp]=useState("");const[cat,setCat]=useState("🎁 Cadeau");const[fw,setFw]=useState("Les deux");
+  const cats=["🎁 Cadeau","🍽️ Resto","🎬 Film/Série","📍 Endroit","🎭 Activité Paris","📦 Autre"];
+  const add=()=>{if(!inp.trim())return;setWishes(p=>[...p,{id:uid(),name:inp.trim(),cat,forWho:fw,done:false}]);setInp("");};
+  return(<Anim k="wl"><div><PH title="💝 Wishlist"/><div style={{...cs,display:"flex",flexDirection:"column",gap:5}}><input value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="Ajouter…" style={is}/><div style={{display:"flex",gap:4}}><select value={cat} onChange={e=>setCat(e.target.value)} style={{...is,flex:1}}>{cats.map(c=><option key={c} value={c}>{c}</option>)}</select><select value={fw} onChange={e=>setFw(e.target.value)} style={{...is,flex:1}}><option>Les deux</option>{U.map(u=><option key={u}>Pour {u}</option>)}</select></div><button onClick={add} style={{...bp,width:"100%"}}>Ajouter</button></div>
+  {cats.map(c=>{const l=wishes.filter(w=>w.cat===c&&!w.done);if(!l.length)return null;return(<div key={c}><p style={{fontSize:10,color:T.ac,margin:"10px 0 4px",letterSpacing:1}}>{c}</p>{l.map(w=>(<div key={w.id} style={{...cs,display:"flex",alignItems:"center",gap:6,padding:"7px 10px",marginBottom:2}}><button onClick={()=>setWishes(p=>p.map(x=>x.id===w.id?{...x,done:true}:x))} style={{width:16,height:16,borderRadius:4,border:`2px solid ${T.cb}`,background:"none",cursor:"pointer",flexShrink:0}}/><div style={{flex:1}}><p style={{fontSize:11,color:T.t,margin:0}}>{w.name}</p><p style={{fontSize:8,color:T.t3,margin:0}}>{w.forWho}</p></div><button onClick={()=>setWishes(p=>p.filter(x=>x.id!==w.id))} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",fontSize:10}}>✕</button></div>))}</div>);})}
+  </div></Anim>);
+}
+
+function Jar({jarItems,setJarItems}){
+  const[inp,setInp]=useState("");const[pick,setPick]=useState(null);const[spin,setSpin]=useState(false);
+  const add=()=>{if(!inp.trim())return;setJarItems(p=>[...p,inp.trim()]);setInp("");};
+  const rand=()=>{if(!jarItems.length)return;setSpin(true);setPick(null);setTimeout(()=>{setPick(jarItems[Math.floor(Math.random()*jarItems.length)]);setSpin(false);},1000);};
+  return(<Anim k="jar"><div><PH title="🎲 On fait quoi ?"/>
+    <div style={{...cs,textAlign:"center",background:`linear-gradient(135deg,${T.rg},${T.bg2})`,minHeight:90,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>{spin&&<p style={{fontSize:26,margin:0,animation:"spin 0.3s linear infinite"}}>🎰</p>}{!spin&&!pick&&<p style={{fontSize:12,color:T.t2,margin:0}}>Appuie !</p>}{!spin&&pick&&<div><p style={{fontSize:20,margin:"0 0 3px"}}>🎉</p><p style={{fontSize:16,fontWeight:700,color:T.t,margin:0}}>{pick}</p></div>}</div>
+    <button onClick={rand} style={{...bp,width:"100%",marginBottom:8,fontSize:14}}>🎲 Piocher</button>
+    <div style={{...cs,display:"flex",gap:4}}><input value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="Idée…" style={{...is,flex:1,marginBottom:0}}/><button onClick={add} style={{...bp,padding:"11px 10px"}}>+</button></div>
+    {jarItems.map((it,i)=>(<div key={i} style={{...cs,display:"flex",alignItems:"center",gap:5,padding:"6px 10px",marginBottom:2}}><span style={{fontSize:10,color:T.ac}}>✦</span><span style={{flex:1,fontSize:11,color:T.t}}>{it}</span><button onClick={()=>setJarItems(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",fontSize:10}}>✕</button></div>))}
+  </div></Anim>);
+}
+
+function Notes({notes,setNotes}){
+  const[inp,setInp]=useState("");const[au,setAu]=useState(U[0]);
+  const add=()=>{if(!inp.trim())return;setNotes(p=>[{id:uid(),text:inp.trim(),by:au,date:new Date().toISOString()},...p]);setInp("");};
+  return(<Anim k="notes"><div><PH title="📝 Notes"/>
+    <div style={{...cs,display:"flex",flexDirection:"column",gap:5}}><textarea value={inp} onChange={e=>setInp(e.target.value)} placeholder="Un mot…" rows={2} style={{...is,resize:"vertical"}}/><div style={{display:"flex",gap:4}}><select value={au} onChange={e=>setAu(e.target.value)} style={{...is,width:"auto"}}>{U.map(u=><option key={u}>{u}</option>)}</select><button onClick={add} style={{...bp,flex:1}}>Poster</button></div></div>
+    {notes.map(n=>(<div key={n.id} style={{...cs,padding:"9px 12px",marginBottom:4,borderLeft:`4px solid ${n.by===U[0]?T.red:T.blue}`}}><p style={{fontSize:11,color:T.t,margin:0,whiteSpace:"pre-wrap"}}>{n.text}</p><div style={{display:"flex",justifyContent:"space-between",marginTop:4}}><p style={{fontSize:8,color:T.t3,margin:0}}>{n.by} · {new Date(n.date).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</p><button onClick={()=>setNotes(p=>p.filter(x=>x.id!==n.id))} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",fontSize:9}}>✕</button></div></div>))}
+  </div></Anim>);
+}
+
+function Photos({photos,setPhotos}){
+  const[cap,setCap]=useState("");const[dt,setDt]=useState(new Date().toISOString().slice(0,10));const[em,setEm]=useState("📸");
+  const add=()=>{if(!cap.trim())return;setPhotos(p=>[{id:uid(),caption:cap.trim(),date:dt,emoji:em},...p]);setCap("");};
+  return(<Anim k="ph"><div><PH title="📸 Souvenirs"/>
+    <div style={{...cs,display:"flex",flexDirection:"column",gap:5}}><div style={{display:"flex",gap:4}}><input value={em} onChange={e=>setEm(e.target.value)} style={{...is,width:38,textAlign:"center",fontSize:16}}/><input value={cap} onChange={e=>setCap(e.target.value)} placeholder="Un souvenir…" style={{...is,flex:1}}/></div><div style={{display:"flex",gap:4}}><input type="date" value={dt} onChange={e=>setDt(e.target.value)} style={{...is,flex:1}}/><button onClick={add} style={{...bp,flex:1}}>+</button></div></div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>{photos.map(p=>(<div key={p.id} style={{...cs,textAlign:"center",padding:"12px 8px",background:`linear-gradient(135deg,${T.rg},${T.bg2})`,position:"relative"}}><span style={{fontSize:26}}>{p.emoji}</span><p style={{fontSize:11,fontWeight:600,color:T.t,margin:"4px 0 2px"}}>{p.caption}</p><p style={{fontSize:8,color:T.t3,margin:0}}>{new Date(p.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</p><button onClick={()=>setPhotos(pp=>pp.filter(x=>x.id!==p.id))} style={{position:"absolute",top:3,right:5,background:"none",border:"none",color:T.t3,cursor:"pointer",fontSize:9}}>✕</button></div>))}</div>
+  </div></Anim>);
+}
+
+function Countdowns({countdowns,setCountdowns}){
+  const[sa,setSa]=useState(false);const[form,setForm]=useState({name:"",emoji:"🎉",date:""});
+  const add=()=>{if(!form.name.trim()||!form.date)return;setCountdowns(p=>[...p,{id:uid(),...form}].sort((a,b)=>new Date(a.date)-new Date(b.date)));setForm({name:"",emoji:"🎉",date:""});setSa(false);};
+  const up=countdowns.filter(c=>new Date(c.date)>=new Date());const pa=countdowns.filter(c=>new Date(c.date)<new Date());
+  return(<Anim k="cd"><div><PH title="⏳ Compte à rebours"/>
+    {!sa&&<button onClick={()=>setSa(true)} style={{...bp,width:"100%",marginBottom:8}}>+ Ajouter</button>}
+    {sa&&(<div style={{...cs,display:"flex",flexDirection:"column",gap:5,marginBottom:8}}><div style={{display:"flex",gap:5}}><input value={form.emoji} onChange={e=>setForm(p=>({...p,emoji:e.target.value}))} style={{...is,width:40,textAlign:"center",fontSize:16}}/><input value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Événement" style={{...is,flex:1}}/></div><input type="date" value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))} style={is}/><div style={{display:"flex",gap:5}}><button onClick={()=>setSa(false)} style={{...bgg,flex:1}}>Annuler</button><button onClick={add} style={{...bp,flex:1}}>Ajouter</button></div></div>)}
+    {up.map(c=>{const dl=Math.max(0,Math.ceil((new Date(c.date)-new Date())/864e5));return(<div key={c.id} style={{...cs,display:"flex",alignItems:"center",gap:10,padding:"12px 14px"}}><span style={{fontSize:24}}>{c.emoji}</span><div style={{flex:1}}><p style={{fontSize:14,fontWeight:600,color:T.t,margin:0}}>{c.name}</p><p style={{fontSize:10,color:T.t3,margin:0}}>{new Date(c.date).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</p></div><div style={{textAlign:"center"}}><p style={{fontSize:22,fontWeight:700,color:T.pk,margin:0}}>{dl}</p><p style={{fontSize:8,color:T.t3,margin:0}}>jour{dl>1?"s":""}</p></div><button onClick={()=>setCountdowns(p=>p.filter(x=>x.id!==c.id))} style={{background:"none",border:"none",color:T.t3,cursor:"pointer"}}>✕</button></div>);})}
+    {pa.length>0&&<><p style={{fontSize:9,color:T.t3,margin:"10px 0 4px"}}>PASSÉS</p>{pa.map(c=>(<div key={c.id} style={{...cs,padding:"8px 12px",opacity:0.4}}><span>{c.emoji} {c.name}</span></div>))}</>}
+  </div></Anim>);
+}
+
+function MoreMenu({onNav}){
+  const items=[{k:"wishlist",i:"💝",l:"Wishlist",d:"Cadeaux, restos, activités Paris"},{k:"jar",i:"🎲",l:"On fait quoi ?",d:"Piocher une idée"},{k:"wyr",i:"🤔",l:"Tu préfères ?",d:"Question couple du jour"},{k:"countdowns",i:"⏳",l:"Compte à rebours",d:"Anniversaires, événements"},{k:"notes",i:"📝",l:"Notes",d:"Mots & pense-bête"},{k:"photos",i:"📸",l:"Souvenirs",d:"Moments"}];
+  return(<Anim k="more"><div><PH title="✨ Plus"/>{items.map(x=>(<button key={x.k} onClick={()=>onNav(x.k)} style={{...cs,display:"flex",alignItems:"center",gap:9,cursor:"pointer",width:"100%",padding:"11px 13px"}}><span style={{fontSize:22}}>{x.i}</span><div style={{flex:1,textAlign:"left"}}><p style={{fontSize:12,fontWeight:600,color:T.t,margin:0}}>{x.l}</p><p style={{fontSize:9,color:T.t3,margin:0}}>{x.d}</p></div><span style={{color:T.t3,fontSize:12}}>→</span></button>))}</div></Anim>);
+}
+
+function WYRPage({wyrAnswers,setWyrAnswers,user}){
+  const dayIdx=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5)%WYR.length;
+  const q=WYR[dayIdx];const p2=U.find(x=>x!==user);
+  const myA=wyrAnswers[`${dayIdx}-${user}`];const thA=wyrAnswers[`${dayIdx}-${p2}`];
+  return(<Anim k="wyrp"><div><PH title="🤔 Tu préfères ?" sub="Question du jour"/>
+    <div style={{...cs,textAlign:"center",background:`linear-gradient(135deg,${T.rg},${T.bg2})`}}>
+      <div style={{display:"flex",gap:8}}>{q.map((opt,i)=>(<button key={i} onClick={()=>setWyrAnswers(p=>({...p,[`${dayIdx}-${user}`]:i}))} style={{flex:1,padding:"16px 10px",borderRadius:14,cursor:"pointer",background:myA===i?`${i===0?T.red:T.blue}22`:"rgba(255,255,255,0.03)",border:myA===i?`3px solid ${i===0?T.red:T.blue}`:`2px solid ${T.cb}`,transition:"all 0.3s"}}><p style={{fontSize:14,fontWeight:700,color:myA===i?(i===0?T.rl:T.bl):T.t,margin:0}}>{opt}</p></button>))}</div>
+      {myA!==undefined&&thA!==undefined&&<p style={{fontSize:12,color:myA===thA?T.g:T.o,margin:"10px 0 0",fontWeight:600}}>{myA===thA?"🎉 Même choix !":"😄 Pas d'accord !"}<br/><span style={{fontWeight:400,fontSize:10,color:T.t3}}>{p2} : {q[thA]}</span></p>}
+    </div>
+  </div></Anim>);
+}
+
+export default function App(){
+  const{state,loaded,makeSetter}=useFirestore();
+  const[tab,setTab]=useState("home");const[user,setUser]=useState(U[0]);
+  const setMoods=makeSetter("moods");const setEvening=makeSetter("evening");const setItems=makeSetter("items");
+  const setTodos=makeSetter("todos");const setExpenses=makeSetter("expenses");const setEvents=makeSetter("events");
+  const setVoyages=makeSetter("voyages");const setPl=makeSetter("packingLists");const setRecipes=makeSetter("recipes");
+  const setWeekPlan=makeSetter("weekPlan");const setWishes=makeSetter("wishes");const setJarItems=makeSetter("jarItems");
+  const setNotes=makeSetter("notes");const setPhotos=makeSetter("photos");const setWyrA=makeSetter("wyrAnswers");const setCountdowns=makeSetter("countdowns");
+  const{moods,evening,items,todos,expenses,events,voyages,packingLists:pl,recipes,weekPlan,wishes,jarItems,notes,photos,wyrAnswers:wyrA,countdowns}=state;
+  const w={temp:10,high:16,cond:"Couvert",icon:"☁️",prec:35};
+
+  if(!loaded)return(<div style={{minHeight:"100vh",background:"#0a0e1a",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}><span style={{fontSize:48}}>🐨</span><p style={{fontSize:16,fontWeight:700,background:`linear-gradient(90deg,${T.rl},${T.bl})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>La Villa des Koalas</p><p style={{fontSize:12,color:T.t3}}>Chargement...</p></div>);
+
+  return(<div style={{minHeight:"100vh",background:`linear-gradient(160deg,#0a0e1a 0%,#0d1325 30%,#111830 60%,#0f1528 100%)`,color:T.t,fontFamily:"'Segoe UI',system-ui,-apple-system,sans-serif",paddingBottom:64}}>
+    <div style={{position:"fixed",top:-150,right:-150,width:400,height:400,borderRadius:"50%",background:`radial-gradient(circle,${T.rg},transparent 70%)`,pointerEvents:"none",zIndex:0}}/>
+    <div style={{position:"fixed",bottom:-100,left:-100,width:350,height:350,borderRadius:"50%",background:`radial-gradient(circle,${T.bg2},transparent 70%)`,pointerEvents:"none",zIndex:0}}/>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 14px 2px",position:"relative",zIndex:1}}>
+      <div style={{display:"flex",alignItems:"center",gap:4,cursor:"pointer"}} onClick={()=>setTab("home")}><span style={{fontSize:14}}>🐨</span><p style={{fontSize:11,fontWeight:700,margin:0,background:`linear-gradient(90deg,${T.rl},${T.bl})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>La Villa des Koalas</p></div>
+      <button onClick={()=>setUser(p=>p===U[0]?U[1]:U[0])} style={{background:`linear-gradient(135deg,${T.red}22,${T.blue}22)`,border:`1px solid ${T.red}33`,borderRadius:14,padding:"3px 10px",color:T.rl,fontSize:10,cursor:"pointer",fontWeight:600}}>👤 {user}</button>
+    </div>
+    <div style={{padding:"2px 14px 14px",maxWidth:520,margin:"0 auto",position:"relative",zIndex:1}}>
+      {tab==="home"&&<Home user={user} moods={moods} setMoods={setMoods} voyages={voyages} items={items} todos={todos} expenses={expenses} events={events} evening={evening} setEvening={setEvening} onNav={setTab} weekPlan={weekPlan} weather={w} countdowns={countdowns} photos={photos} wyrAnswers={wyrA} setWyrAnswers={setWyrA}/>}
+      {tab==="courses"&&<Courses items={items} setItems={setItems}/>}
+      {tab==="meals"&&<Meals recipes={recipes} setRecipes={setRecipes} weekPlan={weekPlan} setWeekPlan={setWeekPlan} items={items} setItems={setItems}/>}
+      {tab==="todos"&&<Todos todos={todos} setTodos={setTodos}/>}
+      {tab==="depenses"&&<Depenses expenses={expenses} setExpenses={setExpenses}/>}
+      {tab==="planning"&&<Planning events={events} setEvents={setEvents}/>}
+      {tab==="voyages"&&<Voyages voyages={voyages} setVoyages={setVoyages} pl={pl} setPl={setPl}/>}
+      {tab==="more"&&<MoreMenu onNav={setTab}/>}
+      {tab==="wishlist"&&<Wishlist wishes={wishes} setWishes={setWishes}/>}
+      {tab==="jar"&&<Jar jarItems={jarItems} setJarItems={setJarItems}/>}
+      {tab==="notes"&&<Notes notes={notes} setNotes={setNotes}/>}
+      {tab==="photos"&&<Photos photos={photos} setPhotos={setPhotos}/>}
+      {tab==="wyr"&&<WYRPage wyrAnswers={wyrA} setWyrAnswers={setWyrA} user={user}/>}
+      {tab==="countdowns"&&<Countdowns countdowns={countdowns} setCountdowns={setCountdowns}/>}
+    </div>
+    <Nav active={tab} onNav={setTab}/>
+    <style>{`@keyframes fadeSlide{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}@keyframes spin{to{transform:rotate(360deg);}}input[type="date"]::-webkit-calendar-picker-indicator,input[type="time"]::-webkit-calendar-picker-indicator{filter:invert(0.7);}*{-webkit-tap-highlight-color:transparent;}::selection{background:${T.red}44;}`}</style>
+  </div>);
+}
