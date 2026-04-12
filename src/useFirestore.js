@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { subscribeToState, saveState } from "./firebase";
 
+// Clés synchronisées avec Firestore
 const SYNC_KEYS = [
   "moods", "evening", "items", "todos", "expenses", "events",
   "voyages", "packingLists", "recipes", "weekPlan", "wishes",
-  "jarItems", "notes", "photos", "wyrAnswers", "countdowns"
+  "jarItems", "notes", "photos", "wyrAnswers", "countdowns", "weekPresence"
 ];
 
 const INITIAL = {
@@ -28,6 +29,7 @@ const INITIAL = {
   photos: [],
   wyrAnswers: {},
   countdowns: [],
+  weekPresence: {},
 };
 
 export function useFirestore() {
@@ -36,25 +38,25 @@ export function useFirestore() {
   const skipNextSave = useRef(false);
   const debounceTimer = useRef(null);
 
+  // Écoute Firestore en temps réel
   useEffect(() => {
     const unsub = subscribeToState((remote) => {
-      if (remote) {
-        skipNextSave.current = true;
-        setState((prev) => {
-          const merged = { ...prev };
-          SYNC_KEYS.forEach((key) => {
-            if (remote[key] !== undefined) {
-              merged[key] = remote[key];
-            }
-          });
-          return merged;
+      skipNextSave.current = true;
+      setState((prev) => {
+        const merged = { ...prev };
+        SYNC_KEYS.forEach((key) => {
+          if (remote[key] !== undefined) {
+            merged[key] = remote[key];
+          }
         });
-      }
+        return merged;
+      });
       setLoaded(true);
     });
     return unsub;
   }, []);
 
+  // Sauvegarde avec debounce (500ms) quand le state change
   useEffect(() => {
     if (!loaded) return;
     if (skipNextSave.current) {
@@ -71,6 +73,7 @@ export function useFirestore() {
     }, 500);
   }, [state, loaded]);
 
+  // Helper pour créer un setter par clé
   const makeSetter = useCallback(
     (key) => (valOrFn) => {
       setState((prev) => ({
