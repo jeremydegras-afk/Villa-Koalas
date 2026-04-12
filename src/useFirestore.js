@@ -5,7 +5,7 @@ import { subscribeToState, saveState } from "./firebase";
 const SYNC_KEYS = [
   "moods", "evening", "items", "todos", "expenses", "events",
   "voyages", "packingLists", "recipes", "weekPlan", "wishes",
-  "jarItems", "notes", "photos", "wyrAnswers", "countdowns", "weekPresence"
+  "jarItems", "notes", "photos", "wyrAnswers", "countdowns", "weekPresence", "travelWish"
 ];
 
 const INITIAL = {
@@ -30,6 +30,7 @@ const INITIAL = {
   wyrAnswers: {},
   countdowns: [],
   weekPresence: {},
+  travelWish: [],
 };
 
 export function useFirestore() {
