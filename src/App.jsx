@@ -113,72 +113,106 @@ function Todos({todos,setTodos}){const[inp,setInp]=useState("");const[cat,setCat
 // ─── DÉPENSES ───────────────────────────────────────────────────
 function Depenses({expenses,setExpenses}){const[show,setShow]=useState(false);const[form,setForm]=useState({label:"",amount:"",cat:CD[0],paidBy:U[0]});const[monthF,setMonthF]=useState("");const add=()=>{const a=parseFloat(form.amount);if(!form.label.trim()||isNaN(a)||a<=0)return;setExpenses(p=>[{id:uid(),...form,amount:a,date:new Date().toISOString()},...p]);setForm({label:"",amount:"",cat:CD[0],paidBy:U[0]});setShow(false);};const filtered=monthF?expenses.filter(e=>`${new Date(e.date).getFullYear()}-${String(new Date(e.date).getMonth()+1).padStart(2,"0")}`===monthF):expenses;const totals=useMemo(()=>{const t={[U[0]]:0,[U[1]]:0};filtered.forEach(e=>{t[e.paidBy]+=e.amount;});return t;},[filtered]);const total=totals[U[0]]+totals[U[1]];const diff=(totals[U[0]]-totals[U[1]])/2;const db=diff>0?U[1]:U[0];const cr=diff>0?U[0]:U[1];const ow=Math.abs(diff);const months=useMemo(()=>{const s=new Set();expenses.forEach(e=>{const d=new Date(e.date);s.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);});return[...s].sort().reverse();},[expenses]);return(<Anim k="dep"><div><PH title="💸 Dépenses" sub={`${total.toFixed(0)}€`}/><div style={{...cs,background:`linear-gradient(135deg,${T.bg2},rgba(52,211,153,0.06))`}}><div style={{display:"flex",justifyContent:"space-around",marginBottom:10}}>{U.map(u=>(<div key={u} style={{textAlign:"center"}}><p style={{fontSize:13,color:T.t3,margin:0}}>{u}</p><p style={{fontSize:24,fontWeight:700,color:T.t,margin:0}}>{totals[u].toFixed(0)}€</p></div>))}</div><div style={{background:"rgba(255,255,255,0.06)",borderRadius:12,padding:"10px 14px",textAlign:"center"}}>{ow<0.5?<p style={{fontSize:15,color:T.g,margin:0}}>✅ Équilibre</p>:<p style={{fontSize:15,color:T.o,margin:0}}>{db} doit <strong>{ow.toFixed(2)}€</strong> à {cr}</p>}</div>{ow>=0.5&&<button onClick={()=>{if(window.confirm("Remettre à zéro ?"))setExpenses([]);}} style={{...bg3,width:"100%",marginTop:10,textAlign:"center",fontSize:14,color:T.g}}>✅ On est quittes</button>}</div>{months.length>1&&<div style={{display:"flex",gap:5,marginBottom:10,overflowX:"auto"}}><button onClick={()=>setMonthF("")} style={{...bg3,padding:"6px 14px",fontSize:13,background:!monthF?`${T.ac}22`:undefined}}>Tout</button>{months.map(m=>(<button key={m} onClick={()=>setMonthF(m)} style={{...bg3,padding:"6px 14px",fontSize:13,background:monthF===m?`${T.ac}22`:undefined}}>{m}</button>))}</div>}{!show&&<button onClick={()=>setShow(true)} style={{...bp,width:"100%",marginBottom:10}}>+ Dépense</button>}{show&&(<div style={{...cs,display:"flex",flexDirection:"column",gap:6}}><input value={form.label} onChange={e=>setForm(p=>({...p,label:e.target.value}))} placeholder="Libellé" style={is}/><div style={{display:"flex",gap:6}}><input type="number" value={form.amount} onChange={e=>setForm(p=>({...p,amount:e.target.value}))} placeholder="€" style={{...is,flex:1}}/><select value={form.cat} onChange={e=>setForm(p=>({...p,cat:e.target.value}))} style={{...is,width:"auto"}}>{CD.map(c=><option key={c} value={c}>{c}</option>)}</select></div><div style={{display:"flex",gap:6}}>{U.map(u=>(<button key={u} onClick={()=>setForm(p=>({...p,paidBy:u}))} style={{flex:1,padding:10,borderRadius:12,fontSize:15,cursor:"pointer",border:form.paidBy===u?`2px solid ${T.blue}`:`2px solid ${T.cb}`,background:form.paidBy===u?`${T.blue}18`:"transparent",color:form.paidBy===u?T.blue:T.t3}}>{u}</button>))}</div><div style={{display:"flex",gap:6}}><button onClick={()=>setShow(false)} style={{...bg3,flex:1}}>Annuler</button><button onClick={add} style={{...bp,flex:1}}>Ajouter</button></div></div>)}{filtered.map(e=>(<div key={e.id} style={{...cs,display:"flex",alignItems:"center",gap:8,padding:"10px 14px",marginBottom:4}}><span style={{fontSize:18}}>{e.cat.split(" ")[0]}</span><div style={{flex:1}}><p style={{fontSize:15,color:T.t,margin:0}}>{e.label}</p><p style={{fontSize:11,color:T.t3,margin:0}}>{e.paidBy} · {new Date(e.date).toLocaleDateString("fr-FR")}</p></div><span style={{fontSize:16,fontWeight:700,color:T.t}}>{e.amount.toFixed(2)}€</span><button onClick={()=>setExpenses(p=>p.filter(x=>x.id!==e.id))} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",fontSize:14}}>✕</button></div>))}</div></Anim>);}
 
-// ─── VOYAGES (with wishlist + season calendar) ──────────────────
+// ─── VOYAGES (with wishlist + AI seasons + calendar) ────────────
 function Voyages({voyages,setVoyages,pl,setPl,travelWish,setTravelWish}){
   const[view,setView]=useState("trips");const[sa,setSa]=useState(false);
   const[form,setForm]=useState({destination:"",emoji:"✈️",date:"",dateFin:"",notes:""});
   const[op,setOp]=useState(null);const[pi,setPi]=useState("");
   const[wInp,setWInp]=useState("");const[wEmoji,setWEmoji]=useState("🌍");
-  // season data: month 0-11 => green/orange/red per destination
-  const[wSeason,setWSeason]=useState("");
+  const[loadingSeason,setLoadingSeason]=useState(false);
+  const[seasonPreview,setSeasonPreview]=useState(null); // array of 12 g/o/r
+
   const add=()=>{if(!form.destination.trim()||!form.date)return;const id=uid();setVoyages(p=>[...p,{id,...form}].sort((a,b)=>new Date(a.date)-new Date(b.date)));setPl(p=>({...p,[id]:[]}));setForm({destination:"",emoji:"✈️",date:"",dateFin:"",notes:""});setSa(false);};
   const addP=tid=>{if(!pi.trim())return;setPl(p=>({...p,[tid]:[...(p[tid]||[]),{id:uid(),name:pi.trim(),done:false}]}));setPi("");};
   const togP=(tid,iid)=>setPl(p=>({...p,[tid]:(p[tid]||[]).map(x=>x.id===iid?{...x,done:!x.done}:x)}));
-  const addWish=()=>{if(!wInp.trim())return;setTravelWish(p=>[...p,{id:uid(),dest:wInp.trim(),emoji:wEmoji,season:wSeason||null}]);setWInp("");setWEmoji("🌍");setWSeason("");};
-  const rmWish=id=>setTravelWish(p=>p.filter(x=>x.id!==id));
-  const up=voyages.filter(v=>new Date(v.dateFin||v.date)>=new Date());const pa=voyages.filter(v=>new Date(v.dateFin||v.date)<new Date());
 
-  const seasonColors={green:T.g,orange:T.o,red:T.r};
-  const seasonLabel={green:"🟢 Idéal",orange:"🟠 Correct",red:"🔴 Éviter"};
-
-  // Calendar view: for each month, show which wishlist destinations are green
-  const calendarView=useMemo(()=>{
-    return MN.map((month,mi)=>{
-      const greens=travelWish.filter(w=>{
-        if(!w.months)return false;
-        return w.months[mi]==="green";
+  // Fetch seasons from Claude API
+  const fetchSeasons=async(dest)=>{
+    if(!dest.trim())return;
+    setLoadingSeason(true);setSeasonPreview(null);
+    try{
+      const res=await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          model:"claude-sonnet-4-20250514",max_tokens:300,
+          messages:[{role:"user",content:`Pour la destination "${dest}", donne-moi la qualité de chaque mois pour y voyager. Réponds UNIQUEMENT avec un JSON array de 12 strings, un par mois (janvier=index 0), chaque valeur est "g" (bon/idéal), "o" (correct/moyen) ou "r" (mauvais/à éviter). Exemple: ["g","g","o","r","r","r","r","r","o","g","g","g"]. Rien d'autre que le JSON.`}]
+        })
       });
-      return{month,greens};
-    });
-  },[travelWish]);
+      const data=await res.json();
+      const txt=data.content?.map(c=>c.text||"").join("")||"";
+      const clean=txt.replace(/```json|```/g,"").trim();
+      const arr=JSON.parse(clean);
+      if(Array.isArray(arr)&&arr.length===12){setSeasonPreview(arr);}
+    }catch(e){console.error("Season fetch error:",e);}
+    setLoadingSeason(false);
+  };
 
-  const tabs3=[{k:"trips",l:"✈️ Trips"},{k:"wishlist",l:"🌍 Envies"},{k:"calendar",l:"📅 Saisons"}];
+  const addWish=()=>{
+    if(!wInp.trim())return;
+    setTravelWish(p=>[...p,{id:uid(),dest:wInp.trim(),emoji:wEmoji,months:seasonPreview||null}]);
+    setWInp("");setWEmoji("🌍");setSeasonPreview(null);
+  };
+  const rmWish=id=>setTravelWish(p=>p.filter(x=>x.id!==id));
+  const up=voyages.filter(v=>new Date(v.dateFin||v.date)>=new Date());
+  const pa=voyages.filter(v=>new Date(v.dateFin||v.date)<new Date());
+
+  const sColor={g:T.g,o:T.o,r:T.r};const sLabel={g:"Idéal",o:"Correct",r:"Éviter"};
+  const sEmoji={g:"🟢",o:"🟠",r:"🔴"};
+
+  const tabs3=[{k:"trips",l:"✈️ Trips"},{k:"wishlist",l:"🌍 Envies"},{k:"calendar",l:"📅 Quand partir"}];
   const TB2=()=>(<div style={{display:"flex",gap:4,marginBottom:12,overflowX:"auto"}}>{tabs3.map(t=>(<button key={t.k} onClick={()=>setView(t.k)} style={{padding:"9px 14px",borderRadius:10,fontSize:13,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,border:view===t.k?`2px solid ${T.blue}`:`1px solid ${T.cb}`,background:view===t.k?`${T.blue}18`:"transparent",color:view===t.k?T.bl:T.t3,fontWeight:view===t.k?700:400}}>{t.l}</button>))}</div>);
 
   const Trip=({v,old})=>{const dl=Math.max(0,Math.ceil((new Date(v.date)-new Date())/864e5));const pk=pl[v.id]||[];const pd=pk.filter(x=>x.done).length;return(<div style={{...cs,borderLeft:`4px solid ${old?T.t3:T.red}`,opacity:old?0.6:1}}><div style={{display:"flex",justifyContent:"space-between"}}><div style={{flex:1}}><p style={{fontSize:18,fontWeight:700,color:T.t,margin:0}}>{v.emoji} {v.destination}</p><p style={{fontSize:13,color:T.t3,margin:"3px 0"}}>{new Date(v.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}{v.dateFin&&` → ${new Date(v.dateFin).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}`}</p>{!old&&dl>0&&<p style={{fontSize:13,color:T.red,margin:0,fontWeight:600}}>Dans {dl}j</p>}{v.notes&&<p style={{fontSize:13,color:T.t2,margin:"4px 0 0"}}>{v.notes}</p>}</div><button onClick={()=>setVoyages(p=>p.filter(x=>x.id!==v.id))} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",fontSize:16}}>✕</button></div>{!old&&<div style={{marginTop:8,borderTop:`1px solid ${T.cb}`,paddingTop:8}}><button onClick={()=>setOp(op===v.id?null:v.id)} style={{background:"none",border:"none",color:T.blue,fontSize:13,cursor:"pointer",padding:0}}>🎒 ({pd}/{pk.length}) {op===v.id?"▲":"▼"}</button>{op===v.id&&<div style={{marginTop:6}}><div style={{display:"flex",gap:4,marginBottom:5}}><input value={pi} onChange={e=>setPi(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addP(v.id)} placeholder="…" style={{...is,flex:1,padding:"8px 12px"}}/><button onClick={()=>addP(v.id)} style={{...bp,padding:"8px 14px"}}>+</button></div>{pk.map(x=>(<div key={x.id} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0"}}><button onClick={()=>togP(v.id,x.id)} style={{width:18,height:18,borderRadius:5,border:x.done?`2px solid ${T.g}`:`2px solid ${T.cb}`,background:x.done?`${T.g}33`:"none",cursor:"pointer",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",color:T.g}}>{x.done?"✓":""}</button><span style={{fontSize:13,color:x.done?T.t3:T.t,textDecoration:x.done?"line-through":"none"}}>{x.name}</span></div>))}</div>}</div>}</div>);};
 
+  // Season bar component
+  const SeasonBar=({months})=>{
+    if(!months)return null;
+    return(<div style={{display:"flex",gap:2,marginTop:6}}>{MN.map((m,i)=>(<div key={i} style={{flex:1,textAlign:"center"}}><div style={{height:20,borderRadius:4,background:sColor[months[i]]||T.t3,opacity:0.8,marginBottom:2}}></div><p style={{fontSize:7,color:T.t3,margin:0}}>{m.slice(0,1)}</p></div>))}</div>);
+  };
+
   if(view==="wishlist")return(<Anim k="tw"><div><PH title="🌍 Envies de voyage"/><TB2/>
-    <div style={{...cs,display:"flex",flexDirection:"column",gap:6}}>
+    <div style={{...cs,display:"flex",flexDirection:"column",gap:8}}>
       <div style={{display:"flex",gap:6}}><input value={wEmoji} onChange={e=>setWEmoji(e.target.value)} style={{...is,width:50,textAlign:"center",fontSize:22}}/><input value={wInp} onChange={e=>setWInp(e.target.value)} placeholder="Destination rêvée…" style={{...is,flex:1}}/></div>
-      <p style={{fontSize:12,color:T.t3,margin:0}}>Meilleure saison (optionnel) :</p>
-      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{MN.map((m,i)=>(<button key={i} onClick={()=>{}} style={{padding:"4px 8px",borderRadius:6,fontSize:10,cursor:"default",border:`1px solid ${T.cb}`,background:"transparent",color:T.t3}}>{m.slice(0,3)}</button>))}</div>
-      <a href={wInp?`https://www.ou-et-quand.net/partir/quand/${wInp.toLowerCase().replace(/\s+/g,"-")}/`:`https://www.ou-et-quand.net`} target="_blank" rel="noopener noreferrer" style={{fontSize:13,color:T.blue,textDecoration:"underline"}}>🔍 Voir les saisons sur ou-et-quand.net</a>
-      <button onClick={addWish} style={{...bp,width:"100%"}}>Ajouter à la wishlist</button>
+      <button onClick={()=>fetchSeasons(wInp)} disabled={loadingSeason||!wInp.trim()} style={{...bg3,width:"100%",textAlign:"center",fontSize:14,color:T.blue,opacity:(!wInp.trim()||loadingSeason)?0.5:1}}>
+        {loadingSeason?"⏳ Analyse en cours...":"🔍 Chercher les meilleures saisons"}
+      </button>
+      {seasonPreview&&(<div style={{...cs,background:`${T.blue}08`,border:`1px solid ${T.blue}22`}}>
+        <p style={{fontSize:12,color:T.blue,margin:"0 0 8px",fontWeight:600}}>Saisons pour {wInp} :</p>
+        <div style={{display:"flex",gap:3}}>{MN.map((m,i)=>(<div key={i} style={{flex:1,textAlign:"center"}}>
+          <div style={{width:"100%",height:28,borderRadius:6,background:sColor[seasonPreview[i]]||T.t3,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:10}}>{sEmoji[seasonPreview[i]]}</span></div>
+          <p style={{fontSize:8,color:T.t3,margin:"3px 0 0"}}>{m.slice(0,3)}</p>
+        </div>))}</div>
+        <div style={{display:"flex",justifyContent:"center",gap:12,marginTop:8}}>{["g","o","r"].map(k=>(<span key={k} style={{fontSize:11,color:sColor[k]}}>{sEmoji[k]} {sLabel[k]}</span>))}</div>
+      </div>)}
+      <button onClick={addWish} disabled={!wInp.trim()} style={{...bp,width:"100%",opacity:wInp.trim()?1:0.5}}>Ajouter à la wishlist</button>
     </div>
-    {travelWish.map(w=>(<div key={w.id} style={{...cs,display:"flex",alignItems:"center",gap:10,padding:"12px 14px",marginBottom:4}}>
-      <span style={{fontSize:24}}>{w.emoji}</span>
-      <div style={{flex:1}}>
-        <p style={{fontSize:16,fontWeight:600,color:T.t,margin:0}}>{w.dest}</p>
-        <a href={`https://www.ou-et-quand.net/partir/quand/${w.dest.toLowerCase().replace(/\s+/g,"-")}/`} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:T.blue}}>📅 Quand partir ?</a>
+    {travelWish.map(w=>(<div key={w.id} style={{...cs,marginBottom:8}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:24}}>{w.emoji}</span>
+        <div style={{flex:1}}><p style={{fontSize:16,fontWeight:600,color:T.t,margin:0}}>{w.dest}</p></div>
+        <button onClick={()=>rmWish(w.id)} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",fontSize:14}}>✕</button>
       </div>
-      <button onClick={()=>rmWish(w.id)} style={{background:"none",border:"none",color:T.t3,cursor:"pointer",fontSize:14}}>✕</button>
+      <SeasonBar months={w.months}/>
+      {!w.months&&<p style={{fontSize:11,color:T.t3,margin:"6px 0 0",fontStyle:"italic"}}>Pas de données saisons — modifie pour chercher</p>}
     </div>))}
     {!travelWish.length&&<p style={{textAlign:"center",color:T.t3,fontSize:14,marginTop:20}}>Ajoutez vos destinations rêvées !</p>}
   </div></Anim>);
 
-  if(view==="calendar")return(<Anim k="tc"><div><PH title="📅 Où partir quand ?"/><TB2/>
-    <p style={{fontSize:13,color:T.t3,margin:"0 0 12px"}}>Cliquez sur une destination dans Envies pour voir les meilleures saisons sur ou-et-quand.net</p>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
-      {MN.map((month,i)=>{
-        const now=new Date().getMonth();
-        const isCurrent=i===now;
-        return(<div key={i} style={{...cs,padding:"12px 10px",textAlign:"center",background:isCurrent?`${T.blue}0a`:T.card,border:isCurrent?`2px solid ${T.blue}33`:`1px solid ${T.cb}`}}>
-          <p style={{fontSize:14,fontWeight:isCurrent?700:500,color:isCurrent?T.bl:T.t,margin:"0 0 6px"}}>{month.slice(0,3)}</p>
-          {travelWish.length>0?travelWish.slice(0,3).map(w=>(<p key={w.id} style={{fontSize:10,color:T.t2,margin:"2px 0"}}>{w.emoji} {w.dest.slice(0,10)}</p>)):<p style={{fontSize:10,color:T.t3,margin:0}}>—</p>}
-        </div>);
-      })}
-    </div>
-    <p style={{fontSize:12,color:T.t3,margin:"14px 0 0",textAlign:"center"}}>💡 Ajoutez des destinations dans l'onglet Envies et consultez ou-et-quand.net pour les saisons</p>
+  if(view==="calendar")return(<Anim k="tc"><div><PH title="📅 Quand partir où ?"/><TB2/>
+    {!travelWish.length?<p style={{textAlign:"center",color:T.t3,fontSize:14,marginTop:20}}>Ajoute des destinations dans 🌍 Envies d'abord !</p>:
+    <div>{MN.map((month,i)=>{
+      const now=new Date().getMonth();const isCur=i===now;
+      const greens=travelWish.filter(w=>w.months&&w.months[i]==="g");
+      const oranges=travelWish.filter(w=>w.months&&w.months[i]==="o");
+      const reds=travelWish.filter(w=>w.months&&w.months[i]==="r");
+      return(<div key={i} style={{...cs,padding:"14px 16px",background:isCur?`${T.blue}0a`:T.card,border:isCur?`2px solid ${T.blue}33`:`1px solid ${T.cb}`}}>
+        <p style={{fontSize:16,fontWeight:isCur?700:600,color:isCur?T.bl:T.t,margin:"0 0 8px"}}>{month}{isCur?" ← maintenant":""}</p>
+        {greens.length>0&&<div style={{marginBottom:4}}><span style={{fontSize:11,color:T.g,fontWeight:600}}>🟢 Idéal : </span><span style={{fontSize:13,color:T.t}}>{greens.map(w=>`${w.emoji} ${w.dest}`).join(" · ")}</span></div>}
+        {oranges.length>0&&<div style={{marginBottom:4}}><span style={{fontSize:11,color:T.o,fontWeight:600}}>🟠 Correct : </span><span style={{fontSize:13,color:T.t2}}>{oranges.map(w=>`${w.emoji} ${w.dest}`).join(" · ")}</span></div>}
+        {reds.length>0&&<div><span style={{fontSize:11,color:T.r,fontWeight:600}}>🔴 Éviter : </span><span style={{fontSize:13,color:T.t3}}>{reds.map(w=>`${w.emoji} ${w.dest}`).join(" · ")}</span></div>}
+        {!greens.length&&!oranges.length&&!reds.length&&<p style={{fontSize:12,color:T.t3,margin:0}}>—</p>}
+      </div>);
+    })}</div>}
   </div></Anim>);
 
   return(<Anim k="voy"><div><PH title="✈️ Voyages" sub={`${up.length} trip${up.length>1?"s":""}`}/><TB2/>
