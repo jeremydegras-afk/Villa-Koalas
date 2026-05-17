@@ -200,4 +200,24 @@ export default function App(){
   useEffect(()=>{if(!user||moods[user]===undefined)return;const today=new Date().toISOString().slice(0,10);const key=`${today}-${user}`;if(moodHistory[key]!==moods[user]){setMoodHistory(p=>({...p,[key]:moods[user]}));};},[moods,user]);
   if(!loaded)return(<div style={{minHeight:"100vh",background:"#0a0e1a",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}><span style={{fontSize:48}}>🐨</span><p style={{fontSize:16,fontWeight:700,background:`linear-gradient(90deg,${T.rl},${T.bl})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>La Villa des Koalas</p><p style={{fontSize:12,color:T.t3}}>Chargement...</p></div>);
   if(!user)return<ProfileSelect onSelect={selectUser}/>;
-  return(<div style={{minHeight:"100vh",background:"linear-gradient(160deg,#0a0e1a 0%,#0d1325 30%,#111830 
+  return(<div style={{minHeight:"100vh",background:"linear-gradient(160deg,#0a0e1a 0%,#0d1325 30%,#111830 60%,#0f1528 100%)",color:T.t,fontFamily:"'Segoe UI',system-ui,-apple-system,sans-serif",paddingBottom:68}}>
+    <div style={{position:"fixed",top:-150,right:-150,width:400,height:400,borderRadius:"50%",background:`radial-gradient(circle,${T.rg},transparent 70%)`,pointerEvents:"none",zIndex:0}}/>
+    <div style={{position:"fixed",bottom:-100,left:-100,width:350,height:350,borderRadius:"50%",background:`radial-gradient(circle,${T.bg2},transparent 70%)`,pointerEvents:"none",zIndex:0}}/>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px 3px",position:"relative",zIndex:1}}><div style={{display:"flex",alignItems:"center",gap:5,cursor:"pointer"}} onClick={()=>setTab("home")}><span style={{fontSize:16}}>🐨</span><p style={{fontSize:13,fontWeight:700,margin:0,background:`linear-gradient(90deg,${T.rl},${T.bl})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>La Villa des Koalas</p></div><button onClick={()=>selectUser("")} style={{background:`linear-gradient(135deg,${T.red}22,${T.blue}22)`,border:`1px solid ${T.red}33`,borderRadius:16,padding:"4px 12px",color:T.rl,fontSize:12,cursor:"pointer",fontWeight:600}}>👤 {user}</button></div>
+    <div style={{padding:"3px 16px 16px",maxWidth:520,margin:"0 auto",position:"relative",zIndex:1}}>
+      {tab==="home"&&<Home user={user} moods={moods} setMoods={setMoods} voyages={voyages} items={items} todos={todos} expenses={expenses} events={events} onNav={setTab} weekPlan={weekPlan} weather={w} countdowns={countdowns} photos={photos} wyrAnswers={wyrA} setWyrAnswers={setWyrA} weekPresence={weekPresence||{}} setWeekPresence={setWeekPresence} moodHistory={moodHistory||{}}/>}
+      {tab==="cuisine"&&<Cuisine items={items} setItems={setItems} recipes={recipes} setRecipes={setRecipes} weekPlan={weekPlan} setWeekPlan={setWeekPlan}/>}
+      {tab==="todos"&&<Todos todos={todos} setTodos={setTodos}/>}
+      {tab==="depenses"&&<Depenses expenses={expenses} setExpenses={setExpenses}/>}
+      {tab==="voyages"&&<Voyages voyages={voyages} setVoyages={setVoyages} pl={pl||{}} setPl={setPl} travelWish={travelWish||[]} setTravelWish={setTravelWish}/>}
+      {tab==="more"&&<MoreMenu onNav={setTab}/>}
+      {tab==="wishlist"&&<Wishlist wishes={wishes} setWishes={setWishes}/>}
+      {tab==="jar"&&<Jar jarItems={jarItems} setJarItems={setJarItems}/>}
+      {tab==="notes"&&<Notes notes={notes} setNotes={setNotes} user={user}/>}
+      {tab==="photos"&&<Photos photos={photos} setPhotos={setPhotos}/>}
+      {tab==="countdowns"&&<Countdowns countdowns={countdowns} setCountdowns={setCountdowns}/>}
+    </div>
+    <Nav active={tab} onNav={setTab}/>
+    <style>{`@keyframes fadeSlide{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}@keyframes spin{to{transform:rotate(360deg);}}input[type="date"]::-webkit-calendar-picker-indicator,input[type="time"]::-webkit-calendar-picker-indicator{filter:invert(0.7);}*{-webkit-tap-highlight-color:transparent;}::selection{background:${T.red}44;}`}</style>
+  </div>);
+}
