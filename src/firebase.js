@@ -25,12 +25,18 @@ export function subscribeToState(callback) {
   });
 }
 
+// IMPORTANT: do NOT use { merge: true } here.
+// merge:true makes Firestore merge nested maps recursively, so when a key is
+// deleted from weekPlan / weekPresence / etc. locally, the deletion does NOT
+// propagate to Firestore -- the old key resurfaces on the next snapshot and
+// re-appears in the UI. We always send the full set of SYNC_KEYS, so a plain
+// setDoc (overwrite) is safe.
 export async function saveState(state) {
   try {
     await setDoc(STATE_DOC, {
       ...state,
       updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    });
   } catch (err) {
     console.error("Firestore save error:", err);
   }
